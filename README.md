@@ -22,7 +22,7 @@ Webbaseret system til administration af pagere, brandfolk og stationer for bered
 ## Installation
 
 ```bash
-git clone https://github.com/dit-repo/pager-system.git
+git clone https://github.com/HrCalmar/PagerSystem.git
 cd pager-system
 cp .env.example .env
 ```
