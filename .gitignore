@@ -1,0 +1,73 @@
+# Environment og konfiguration
+.env
+.env.local
+.env.*.local
+config.local.php
+
+# IDE og editor filer
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+.phpstorm.meta.php
+_ide_helper.php
+
+# OS filer
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+log/
+
+# Cache
+cache/
+*.cache
+.php_cs.cache
+.phpunit.result.cache
+
+# Dependencies
+/vendor/
+composer.lock
+
+# Node
+/node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Uploads og brugerdata
+/uploads/*
+!/uploads/.gitkeep
+/storage/*
+!/storage/.gitkeep
+
+# Backups
+*.sql
+*.sql.gz
+*.bak
+*.backup
+/backups/
+
+# Test og coverage
+/coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# Diverse
+*.tmp
+*.temp
+*.pid
+.htaccess.local

@@ -1,0 +1,18 @@
+# .htaccess i ROD (/var/www/pager-system/.htaccess)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect til /public hvis ikke allerede der
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /public/$1 [L]
+    
+    # Hvis root, redirect til /public/
+    RewriteRule ^$ /public/ [L]
+</IfModule>
+
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>

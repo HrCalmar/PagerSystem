@@ -1,0 +1,156 @@
+/* Tilføj dette til slutningen af public/assets/css/app.css */
+
+/* ==================== USER DROPDOWN ==================== */
+.user-dropdown {
+    position: relative;
+}
+
+.user-dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--gray-100);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--gray-700);
+    transition: all 0.2s;
+}
+
+.user-dropdown-btn:hover {
+    background: var(--gray-200);
+}
+
+.user-dropdown-btn .fa-chevron-down {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.user-dropdown.open .user-dropdown-btn .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--gray-200);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s;
+    z-index: 1001;
+}
+
+.user-dropdown.open .user-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    color: var(--gray-700);
+    font-size: 14px;
+    transition: background 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background: var(--gray-50);
+}
+
+.dropdown-item.logout {
+    color: var(--danger);
+}
+
+.dropdown-item.logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--gray-200);
+    margin: 4px 0;
+}
+
+/* Nav link active state */
+.nav-link.active {
+    background: var(--gray-100);
+    color: var(--primary);
+}
+
+/* Status archived */
+.status-archived {
+    background: #6b7280;
+    color: white;
+}
+
+/* ==================== IMPROVEMENTS ==================== */
+
+/* Better alerts */
+.alert {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    align-items: flex-start;
+    margin-bottom: var(--spacing-lg);
+}
+
+.alert-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+/* Card bg variable */
+:root {
+    --card-bg: white;
+    --text-primary: var(--gray-900);
+    --text-secondary: var(--gray-600);
+    --text-tertiary: var(--gray-400);
+    --border-color: var(--gray-200);
+    --primary-color: var(--primary);
+    --primary-hover: var(--primary-hover);
+}
+
+/* Mobile dropdown */
+@media (max-width: 768px) {
+    .user-dropdown-menu {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        min-width: 100%;
+        padding: 8px 0 env(safe-area-inset-bottom);
+    }
+    
+    .user-dropdown.open .user-dropdown-menu {
+        transform: translateY(0);
+    }
+    
+    .dropdown-item {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+}
