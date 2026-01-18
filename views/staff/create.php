@@ -1,5 +1,5 @@
 <?php
-// views/staff/create.php - tilføj fejlvisning
+// views/staff/create.php
 use App\Core\CSRF;
 $title = 'Opret brandmand';
 ob_start();
@@ -17,7 +17,7 @@ ob_start();
 <?php endif; ?>
 
 <div class="card">
-    <form method="POST" action="/staff">
+    <form method="POST" action="/staff" id="staff-form">
         <?= CSRF::field() ?>
         
         <div class="form-group">
@@ -32,16 +32,22 @@ ob_start();
         </div>
         
         <div class="form-group">
-            <label><i class="fas fa-building"></i> Stationer</label>
+            <label><i class="fas fa-building"></i> Stationer *</label>
             <?php if (empty($stations)): ?>
                 <p class="text-muted">Ingen stationer tilgængelige</p>
             <?php else: ?>
-                <?php foreach ($stations as $station): ?>
-                    <div class="checkbox">
-                        <input type="checkbox" name="station_ids[]" value="<?= $station['id'] ?>" id="station_<?= $station['id'] ?>">
-                        <label for="station_<?= $station['id'] ?>"><?= htmlspecialchars($station['name']) ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <div id="stations-container">
+                    <?php foreach ($stations as $station): ?>
+                        <div class="checkbox">
+                            <input type="checkbox" name="station_ids[]" value="<?= $station['id'] ?>" id="station_<?= $station['id'] ?>" class="station-checkbox">
+                            <label for="station_<?= $station['id'] ?>"><?= htmlspecialchars($station['name']) ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <small class="form-help">Vælg mindst én station</small>
+                <div id="station-error" class="form-error" style="display:none;color:#991b1b;font-size:13px;margin-top:6px;">
+                    <i class="fas fa-exclamation-circle"></i> Du skal vælge mindst én station
+                </div>
             <?php endif; ?>
         </div>
         
@@ -51,6 +57,29 @@ ob_start();
         </div>
     </form>
 </div>
+
+<script>
+document.getElementById('staff-form').addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.station-checkbox:checked').length;
+    const errorEl = document.getElementById('station-error');
+    
+    if (checked === 0) {
+        e.preventDefault();
+        errorEl.style.display = 'block';
+        document.getElementById('stations-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+    errorEl.style.display = 'none';
+});
+
+document.querySelectorAll('.station-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+        if (document.querySelectorAll('.station-checkbox:checked').length > 0) {
+            document.getElementById('station-error').style.display = 'none';
+        }
+    });
+});
+</script>
 
 <?php
 $content = ob_get_clean();

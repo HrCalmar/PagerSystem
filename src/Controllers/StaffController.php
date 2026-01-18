@@ -30,7 +30,7 @@ class StaffController {
     }
     
     public function show(string $id): void {
-        $staff = $this->service->getById((int)$id, true); // true = inkluder slettede
+        $staff = $this->service->getById((int)$id, true);
         
         if (!$staff) {
             http_response_code(404);
@@ -65,11 +65,18 @@ class StaffController {
                 'employee_number' => trim($_POST['employee_number'])
             ];
             
+            if (empty($data['name'])) {
+                throw new \Exception('Navn skal udfyldes');
+            }
+            
             if (empty($data['employee_number'])) {
                 throw new \Exception('Lønnummer skal udfyldes');
             }
             
-            // Check om lønnummer allerede eksisterer
+            if (empty($_POST['station_ids']) || !is_array($_POST['station_ids'])) {
+                throw new \Exception('Du skal vælge mindst én station');
+            }
+            
             $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND deleted_at IS NULL");
             $stmt->execute([$data['employee_number']]);
             if ($stmt->fetchColumn() > 0) {
@@ -78,21 +85,20 @@ class StaffController {
             
             $id = $this->service->create($data);
             
-            // Tilføj stationstilknytninger hvis valgt
-            if (!empty($_POST['station_ids']) && is_array($_POST['station_ids'])) {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO station_assignments (staff_id, station_id, start_date) VALUES (?, ?, ?)"
-                );
-                foreach ($_POST['station_ids'] as $stationId) {
-                    $stmt->execute([$id, (int)$stationId, date('Y-m-d')]);
-                }
+            $stmt = $this->db->prepare(
+                "INSERT INTO station_assignments (staff_id, station_id, start_date) VALUES (?, ?, ?)"
+            );
+            foreach ($_POST['station_ids'] as $stationId) {
+                $stmt->execute([$id, (int)$stationId, date('Y-m-d')]);
             }
             
             $this->db->commit();
             header('Location: /staff/' . $id . '?success=created');
         } catch (\Exception $e) {
             $this->db->rollBack();
-            header('Location: /staff/create?error=' . urlencode($e->getMessage()));
+            header('Location: /staff/create?error=' . urlencode($e->getMessage()) . 
+                   '&name=' . urlencode($_POST['name'] ?? '') . 
+                   '&employee_number=' . urlencode($_POST['employee_number'] ?? ''));
         }
         exit;
     }
@@ -123,7 +129,6 @@ class StaffController {
                 throw new \Exception('Lønnummer skal udfyldes');
             }
             
-            // Check om lønnummer eksisterer på anden brandmand
             $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND id != ? AND deleted_at IS NULL");
             $stmt->execute([$data['employee_number'], $id]);
             if ($stmt->fetchColumn() > 0) {
@@ -179,21 +184,17 @@ class StaffController {
                 throw new \Exception('Brandmand ikke fundet');
             }
             
-            // Tjek om der er aktive pagere
             $activePagers = $this->service->getActivePagers((int)$id);
             if (!empty($activePagers)) {
                 throw new \Exception('Kan ikke slette brandmand med aktive pagere - returner disse først');
             }
             
-            // Soft delete - sæt deleted_at
             $stmt = $this->db->prepare("UPDATE staff SET deleted_at = NOW(), status = 'inactive' WHERE id = ?");
             $stmt->execute([$id]);
             
-            // Afslut alle stationstilknytninger
             $stmt = $this->db->prepare("UPDATE station_assignments SET end_date = CURDATE() WHERE staff_id = ? AND end_date IS NULL");
             $stmt->execute([$id]);
             
-            // Log i audit
             $audit = new \App\Services\AuditService();
             $audit->log(Auth::user()['id'], 'delete_staff', 'staff', (int)$id, $staff, ['deleted_at' => date('Y-m-d H:i:s')]);
             

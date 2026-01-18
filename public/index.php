@@ -134,5 +134,21 @@ $router->get('/users/{id}/edit', [$userController, 'edit'], [$authMw, $adminMw])
 $router->post('/users/{id}/update', [$userController, 'update'], [$authMw, $adminMw]);
 $router->post('/users/{id}/reset-password', [$userController, 'resetPassword'], [$authMw, $adminMw]);
 
+// ==================== COMPETENCIES ====================
+
+$competencyController = new App\Controllers\CompetencyController();
+
+$router->get('/competencies', [$competencyController, 'index'], [$authMw]);
+$router->get('/competencies/create', [$competencyController, 'create'], [$authMw, $adminMw]);
+$router->post('/competencies', [$competencyController, 'store'], [$authMw, $adminMw]);
+$router->get('/competencies/expiring', [$competencyController, 'expiring'], [$authMw]);
+$router->get('/competencies/{id}', [$competencyController, 'show'], [$authMw]);
+$router->get('/competencies/{id}/edit', [$competencyController, 'edit'], [$authMw, $adminMw]);
+$router->post('/competencies/{id}/update', [$competencyController, 'update'], [$authMw, $adminMw]);
+$router->post('/competencies/{id}/delete', [$competencyController, 'delete'], [$authMw, $adminMw]);
+
+
+
+
 // ==================== DISPATCH ====================
 $router->dispatch();

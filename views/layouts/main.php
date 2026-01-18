@@ -10,7 +10,7 @@ $user = Auth::user();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Pager System' ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/assets/css/app.css?v=1.5">
+    <link rel="stylesheet" href="/assets/css/app.css?v=1.6">
 </head>
 <body>
     <nav class="navbar">
@@ -31,6 +31,9 @@ $user = Auth::user();
                 <a href="/stations" class="nav-link <?= str_starts_with($_SERVER['REQUEST_URI'], '/stations') ? 'active' : '' ?>">
                     <i class="fas fa-building"></i> Stationer
                 </a>
+                <a href="/competencies" class="nav-link <?= str_starts_with($_SERVER['REQUEST_URI'], '/competencies') ? 'active' : '' ?>">
+                    <i class="fas fa-certificate"></i> Kompetencer
+                </a>
                 <a href="/reports" class="nav-link <?= str_starts_with($_SERVER['REQUEST_URI'], '/reports') ? 'active' : '' ?>">
                     <i class="fas fa-chart-bar"></i> Rapporter
                 </a>
@@ -44,7 +47,7 @@ $user = Auth::user();
                 <div class="user-dropdown">
                     <button class="user-dropdown-btn">
                         <i class="fas fa-user-circle"></i> 
-                        <span><?= htmlspecialchars($user['username']) ?></span>
+                        <span><?= htmlspecialchars($user['name'] ?? $user['username']) ?></span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div class="user-dropdown-menu">
@@ -69,7 +72,6 @@ $user = Auth::user();
     </main>
     
     <script>
-    // Dropdown toggle
     document.querySelector('.user-dropdown-btn')?.addEventListener('click', function(e) {
         e.stopPropagation();
         this.parentElement.classList.toggle('open');
