@@ -19,19 +19,16 @@ use App\Controllers\{
 };
 
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Slå fra i produktion
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
 Session::start();
 
-// Router setup
 $router = new Router();
 
-// Middleware shortcuts
 $authMw = fn() => (new AuthMiddleware())->handle();
 $adminMw = fn() => (new RoleMiddleware())->handle('admin');
 
-// Controllers
 $authController = new AuthController();
 $pagerController = new PagerController();
 $staffController = new StaffController();
@@ -42,6 +39,8 @@ $simController = new SIMController();
 $profileController = new ProfileController();
 $reportController = new App\Controllers\ReportController();
 $userController = new App\Controllers\UserController();
+$auditController = new App\Controllers\AuditController();
+$competencyController = new App\Controllers\CompetencyController();
 
 // ==================== PUBLIC ROUTES ====================
 $router->get('/', function() {
@@ -59,7 +58,7 @@ $router->get('/dashboard', function() {
     require __DIR__ . '/../views/dashboard.php';
 }, [$authMw]);
 
-// ==================== PROFILE (egen bruger) ====================
+// ==================== PROFILE ====================
 $router->get('/profile', [$profileController, 'show'], [$authMw]);
 $router->post('/profile/update', [$profileController, 'update'], [$authMw]);
 $router->post('/profile/password', [$profileController, 'changePassword'], [$authMw]);
@@ -134,10 +133,11 @@ $router->get('/users/{id}/edit', [$userController, 'edit'], [$authMw, $adminMw])
 $router->post('/users/{id}/update', [$userController, 'update'], [$authMw, $adminMw]);
 $router->post('/users/{id}/reset-password', [$userController, 'resetPassword'], [$authMw, $adminMw]);
 
+// ==================== AUDIT LOG ====================
+$router->get('/audit', [$auditController, 'index'], [$authMw, $adminMw]);
+$router->get('/audit/{id}', [$auditController, 'show'], [$authMw, $adminMw]);
+
 // ==================== COMPETENCIES ====================
-
-$competencyController = new App\Controllers\CompetencyController();
-
 $router->get('/competencies', [$competencyController, 'index'], [$authMw]);
 $router->get('/competencies/create', [$competencyController, 'create'], [$authMw, $adminMw]);
 $router->post('/competencies', [$competencyController, 'store'], [$authMw, $adminMw]);
@@ -146,9 +146,6 @@ $router->get('/competencies/{id}', [$competencyController, 'show'], [$authMw]);
 $router->get('/competencies/{id}/edit', [$competencyController, 'edit'], [$authMw, $adminMw]);
 $router->post('/competencies/{id}/update', [$competencyController, 'update'], [$authMw, $adminMw]);
 $router->post('/competencies/{id}/delete', [$competencyController, 'delete'], [$authMw, $adminMw]);
-
-
-
 
 // ==================== DISPATCH ====================
 $router->dispatch();

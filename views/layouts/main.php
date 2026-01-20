@@ -10,7 +10,7 @@ $user = Auth::user();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Pager System' ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/assets/css/app.css?v=1.6">
+    <link rel="stylesheet" href="/assets/css/app.css?v=1.7">
 </head>
 <body>
     <nav class="navbar">
@@ -40,6 +40,9 @@ $user = Auth::user();
                 <?php if (Auth::hasRole('admin')): ?>
                     <a href="/users" class="nav-link <?= str_starts_with($_SERVER['REQUEST_URI'], '/users') ? 'active' : '' ?>">
                         <i class="fas fa-users-cog"></i> Brugere
+                    </a>
+                    <a href="/audit" class="nav-link <?= str_starts_with($_SERVER['REQUEST_URI'], '/audit') ? 'active' : '' ?>">
+                        <i class="fas fa-history"></i> Log
                     </a>
                 <?php endif; ?>
             </div>

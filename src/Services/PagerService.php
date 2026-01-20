@@ -26,7 +26,6 @@ class PagerService {
         
         $params = [];
         
-        // Vis arkiverede eller ej
         if (!empty($filters['show_archived'])) {
             $sql .= " AND p.status = 'archived'";
         } else {
@@ -91,8 +90,8 @@ class PagerService {
         );
         $stmt->execute([
             $data['serial_number'],
-            $data['article_number'] ?? null,
-            $data['purchase_date'] ?? null
+            $data['article_number'] ?: null,
+            $data['purchase_date'] ?: null
         ]);
         
         return (int)$this->db->lastInsertId();
@@ -106,8 +105,8 @@ class PagerService {
         );
         return $stmt->execute([
             $data['serial_number'],
-            $data['article_number'] ?? null,
-            $data['purchase_date'] ?? null,
+            $data['article_number'] ?: null,
+            $data['purchase_date'] ?: null,
             $id
         ]);
     }

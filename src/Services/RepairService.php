@@ -1,5 +1,5 @@
 <?php
-// src/Services/RepairService.php - ny service
+// src/Services/RepairService.php
 namespace App\Services;
 
 use App\Config\Database;
@@ -21,9 +21,9 @@ class RepairService {
         $stmt->execute([
             $pagerId,
             $data['repair_date'],
-            $data['vendor'] ?? null,
-            $data['description'] ?? null,
-            $data['cost'] ?? null,
+            $data['vendor'] ?: null,
+            $data['description'] ?: null,
+            $data['cost'] !== '' ? $data['cost'] : null,
             $data['receipt_path'] ?? null
         ]);
         
