@@ -41,6 +41,7 @@ $reportController = new App\Controllers\ReportController();
 $userController = new App\Controllers\UserController();
 $auditController = new App\Controllers\AuditController();
 $competencyController = new App\Controllers\CompetencyController();
+$searchController = new App\Controllers\SearchController();
 
 // ==================== PUBLIC ROUTES ====================
 $router->get('/', function() {
@@ -146,6 +147,10 @@ $router->get('/competencies/{id}', [$competencyController, 'show'], [$authMw]);
 $router->get('/competencies/{id}/edit', [$competencyController, 'edit'], [$authMw, $adminMw]);
 $router->post('/competencies/{id}/update', [$competencyController, 'update'], [$authMw, $adminMw]);
 $router->post('/competencies/{id}/delete', [$competencyController, 'delete'], [$authMw, $adminMw]);
+
+// ==================== SEARCH ====================
+$router->get('/search', [$searchController, 'index'], [$authMw]);
+$router->get('/search/ajax', [$searchController, 'ajax'], [$authMw]);
 
 // ==================== DISPATCH ====================
 $router->dispatch();
