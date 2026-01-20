@@ -2,6 +2,12 @@
 
 Webbaseret system til administration af pagere, brandfolk og stationer for beredskabet.
 
+
+<img width="1398" height="694" alt="image" src="https://github.com/user-attachments/assets/10581d31-eacf-45ca-8042-e3fb0fc6511d" />
+
+
+
+
 ## Features
 
 - **Pager-administration** – Opret, rediger, arkiver og spor pagere gennem hele livscyklussen
