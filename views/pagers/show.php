@@ -248,14 +248,11 @@ ob_start();
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if (!$r['completed_at'] && Auth::hasRole('admin')): ?>
-                                <form method="POST" action="/repairs/<?= $r['id'] ?>/complete" style="display:inline;">
-                                    <?= CSRF::field() ?>
-                                    <button type="submit" class="btn btn-small btn-primary">
-                                        <i class="fas fa-check"></i> Afslut
-                                    </button>
-                                </form>
-                            <?php endif; ?>
+                           <?php if (!$r['completed_at'] && Auth::hasRole('admin')): ?>
+								<a href="/repairs/<?= $r['id'] ?>/complete" class="btn btn-small btn-primary">
+									<i class="fas fa-check"></i> Afslut
+								</a>
+							<?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

@@ -105,7 +105,7 @@ class PagerWorkflowService {
         } catch (Exception $e) { $this->db->rollBack(); throw $e; }
     }
 
-    public function repaired(int $repairId, int $userId, string $toStatus): void {
+    public function repaired(int $repairId, int $userId, string $toStatus = 'for_preparation'): void {
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("SELECT * FROM repairs WHERE id = ?");
@@ -114,28 +114,25 @@ class PagerWorkflowService {
             if (!$repair) throw new Exception("Reparation ikke fundet");
             if ($repair['completed_at']) throw new Exception("Reparation er allerede afsluttet");
 
-            $pager = $this->getPager($repair['pager_id']);
-            if ($pager['status'] !== 'in_repair') throw new Exception("Pager er ikke i reparation");
-
-            $allowed = array_column($this->transitions->getForEvent('repaired', 'in_repair'), 'to_status');
-            if (!in_array($toStatus, $allowed)) throw new Exception("Ugyldig målstatus efter reparation");
-
             $this->db->prepare("UPDATE repairs SET completed_at = NOW() WHERE id = ?")->execute([$repairId]);
 
+            $pager = $this->getPager($repair['pager_id']);
             $assignment = $this->getActiveAssignment($repair['pager_id']);
+
             if ($assignment) {
-                // Pager stadig hos brandmand — marker færdig men hold status
-                $this->audit->log($userId, 'complete_repair', 'repair', $repairId, $repair, ['note' => 'Afventer returnering']);
+                // Brandmand har stadig pageren — luk kun reparationen, rør ikke status
+                $this->audit->log($userId, 'complete_repair', 'repair', $repairId, $repair, ['note' => 'Afventer returnering fra brandmand']);
                 $this->db->commit();
                 return;
             }
 
-            if ($toStatus === 'for_preparation' && !$this->settings->get('preparation_explicit', false)) {
-                $toStatus = 'in_stock';
-            }
+            // Ingen aktiv assignment — skift pager status
+            $usePrep = $this->settings->get('preparation_explicit', false);
+            $newStatus = ($toStatus === 'for_preparation' && !$usePrep) ? 'in_stock' : $toStatus;
+            if (!in_array($newStatus, ['for_preparation', 'in_stock'])) $newStatus = $usePrep ? 'for_preparation' : 'in_stock';
 
-            $this->db->prepare("UPDATE pagers SET status = ? WHERE id = ?")->execute([$toStatus, $repair['pager_id']]);
-            $this->audit->log($userId, 'repaired_pager', 'pager', $repair['pager_id'], $pager, ['status' => $toStatus]);
+            $this->db->prepare("UPDATE pagers SET status = ? WHERE id = ?")->execute([$newStatus, $repair['pager_id']]);
+            $this->audit->log($userId, 'repaired_pager', 'pager', $repair['pager_id'], $pager, ['status' => $newStatus]);
             $this->db->commit();
         } catch (Exception $e) { $this->db->rollBack(); throw $e; }
     }
