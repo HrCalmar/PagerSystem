@@ -76,6 +76,7 @@ ob_start();
 <div class="card">
     <h2><i class="fas fa-tasks"></i> Handlinger</h2>
     <div class="actions">
+
         <?php if ($pager['status'] === 'in_stock'): ?>
             <a href="/pagers/<?= $pager['id'] ?>/reserve" class="btn">
                 <i class="fas fa-bookmark"></i> Reserver
@@ -83,189 +84,62 @@ ob_start();
             <a href="/pagers/<?= $pager['id'] ?>/issue" class="btn btn-primary">
                 <i class="fas fa-hand-holding"></i> Udlever
             </a>
+            <a href="/pagers/<?= $pager['id'] ?>/broken" class="btn btn-danger">
+                <i class="fas fa-exclamation-triangle"></i> Registrer defekt
+            </a>
+
         <?php elseif ($pager['status'] === 'reserved'): ?>
             <a href="/pagers/<?= $pager['id'] ?>/issue" class="btn btn-primary">
                 <i class="fas fa-hand-holding"></i> Udlever
             </a>
+            <a href="/pagers/<?= $pager['id'] ?>/broken" class="btn btn-danger">
+                <i class="fas fa-exclamation-triangle"></i> Registrer defekt
+            </a>
+
         <?php elseif ($pager['status'] === 'issued'): ?>
             <a href="/pagers/<?= $pager['id'] ?>/return" class="btn btn-primary">
                 <i class="fas fa-undo"></i> Returner
             </a>
+            <a href="/pagers/<?= $pager['id'] ?>/broken" class="btn btn-danger">
+                <i class="fas fa-exclamation-triangle"></i> Registrer defekt
+            </a>
+
         <?php elseif ($pager['status'] === 'for_preparation'): ?>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/stock" style="display:inline;">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-box"></i> Sæt på lager
-                </button>
-            </form>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/repair" style="display:inline;">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn">
-                    <i class="fas fa-wrench"></i> Send til reparation
-                </button>
-            </form>
+            <a href="/pagers/<?= $pager['id'] ?>/preparation" class="btn btn-primary">
+                <i class="fas fa-clipboard-check"></i> Start klargøring
+            </a>
+            <a href="/pagers/<?= $pager['id'] ?>/broken" class="btn btn-danger">
+                <i class="fas fa-exclamation-triangle"></i> Registrer defekt
+            </a>
+
         <?php elseif ($pager['status'] === 'in_repair'): ?>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/preparation" style="display:inline;">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-tools"></i> Sæt til klargøring
-                </button>
-            </form>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/defect" style="display:inline;" onsubmit="return confirm('Marker som defekt?')">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-times-circle"></i> Marker defekt
-                </button>
-            </form>
-        <?php elseif ($pager['status'] === 'defect'): ?>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/preparation" style="display:inline;">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn">
-                    <i class="fas fa-tools"></i> Sæt til klargøring
-                </button>
-            </form>
-        <?php endif; ?>
-        
-        <?php if (!in_array($pager['status'], ['issued', 'archived'])): ?>
-            <form method="POST" action="/pagers/<?= $pager['id'] ?>/archive" style="display:inline;" onsubmit="return confirm('Arkiver denne pager? Den kan gendannes senere.')">
-                <?= CSRF::field() ?>
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-archive"></i> Arkiver
-                </button>
-            </form>
-        <?php endif; ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php if ($pager['status'] === 'archived' && Auth::hasRole('admin')): ?>
-<div class="card">
-    <h2><i class="fas fa-undo"></i> Gendan pager</h2>
-    <form method="POST" action="/pagers/<?= $pager['id'] ?>/restore">
-        <?= CSRF::field() ?>
-        <p>Denne pager er arkiveret. Klik for at gendanne den til "På lager".</p>
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-undo"></i> Gendan pager
-        </button>
-    </form>
-</div>
-<?php endif; ?>
-
-<div class="grid-2col">
-    <div class="card">
-        <h2><i class="fas fa-info-circle"></i> Stamdata</h2>
-        <dl>
-            <dt>Serienummer</dt>
-            <dd class="font-medium"><?= htmlspecialchars($pager['serial_number']) ?></dd>
-            
-            <dt>Artikelnummer</dt>
-            <dd><?= htmlspecialchars($pager['article_number'] ?? '-') ?></dd>
-            
-            <dt>Indkøbsdato</dt>
-            <dd><?= $pager['purchase_date'] ? date('d/m/Y', strtotime($pager['purchase_date'])) : '-' ?></dd>
-            
-            <dt>Status</dt>
-            <dd><?= status_badge($pager['status'], 'pager') ?></dd>
-            
-            <?php if ($pager['staff_name']): ?>
-            <dt>Udleveret til</dt>
-            <dd>
-                <a href="/staff/<?= $pager['staff_id'] ?>" class="text-link">
-                    <i class="fas fa-user"></i> <?= htmlspecialchars($pager['staff_name']) ?>
+            <?php
+            $stmtR = \App\Config\Database::getInstance()->prepare(
+                "SELECT id FROM repairs WHERE pager_id = ? AND completed_at IS NULL ORDER BY id DESC LIMIT 1"
+            );
+            $stmtR->execute([$pager['id']]);
+            $openRepairId = $stmtR->fetchColumn();
+            ?>
+            <?php if ($openRepairId): ?>
+                <a href="/repairs/<?= $openRepairId ?>/complete" class="btn btn-primary">
+                    <i class="fas fa-check-circle"></i> Afslut reparation
                 </a>
-            </dd>
+            <?php else: ?>
+                <a href="/pagers/<?= $pager['id'] ?>/repairs/create" class="btn btn-primary">
+                    <i class="fas fa-wrench"></i> Registrer reparation
+                </a>
             <?php endif; ?>
-        </dl>
-    </div>
 
-    <div class="card">
-        <h2><i class="fas fa-sim-card"></i> SIM-kort</h2>
-        
-        <?php if (Auth::hasRole('admin') && !$pager['sim_number'] && $pager['status'] !== 'archived'): ?>
-            <div class="quick-assign">
-                <form method="POST" action="/pagers/<?= $pager['id'] ?>/sim" class="inline-form compact">
-                    <?= CSRF::field() ?>
-                    <div class="form-row">
-                        <input type="text" name="sim_number" placeholder="SIM-nummer" required>
-                        <input type="text" name="phone_number" placeholder="Telefonnummer" required>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Tilføj
-                        </button>
-                    </div>
-                </form>
-            </div>
+        <?php elseif ($pager['status'] === 'defect'): ?>
+            <a href="/pagers/<?= $pager['id'] ?>/repairs/create" class="btn btn-primary">
+                <i class="fas fa-wrench"></i> Send til reparation
+            </a>
+
         <?php endif; ?>
-        
-        <?php if ($pager['sim_number']): ?>
-            <div class="sim-active">
-                <dl>
-                    <dt>SIM-nummer</dt>
-                    <dd><?= htmlspecialchars($pager['sim_number']) ?></dd>
-                    
-                    <dt>Telefonnummer</dt>
-                    <dd class="phone-number">
-                        <i class="fas fa-phone"></i> <?= htmlspecialchars($pager['phone_number']) ?>
-                    </dd>
-                    
-                    <dt>Status</dt>
-                    <dd>
-                        <span class="badge badge-success">
-                            <i class="fas fa-check-circle"></i> Aktiv
-                        </span>
-                    </dd>
-                </dl>
-                
-                <?php if (Auth::hasRole('admin') && $pager['status'] !== 'archived'): ?>
-                    <div class="card-actions">
-                        <?php
-                        $activeSim = array_values(array_filter($simHistory, fn($s) => $s['status'] === 'active'))[0] ?? null;
-                        if ($activeSim):
-                        ?>
-                            <form method="POST" action="/sim/<?= $activeSim['id'] ?>/deactivate" onsubmit="return confirm('Deaktiver SIM-kort?')">
-                                <?= CSRF::field() ?>
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-times-circle"></i> Deaktiver SIM
-                                </button>
-                            </form>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php else: ?>
-            <p class="text-muted"><i class="fas fa-info-circle"></i> Ingen aktivt SIM-kort</p>
-        <?php endif; ?>
-        
-        <?php if (count($simHistory) > 1): ?>
-            <details class="sim-history-toggle">
-                <summary>Vis SIM historik (<?= count($simHistory) - 1 ?> tidligere)</summary>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>SIM</th>
-                                <th>Telefon</th>
-                                <th>Aktiveret</th>
-                                <th>Deaktiveret</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($simHistory as $sim): ?>
-                                <?php if ($sim['status'] === 'deactivated'): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($sim['sim_number']) ?></td>
-                                    <td><?= htmlspecialchars($sim['phone_number']) ?></td>
-                                    <td><?= date('d/m/Y', strtotime($sim['activated_at'])) ?></td>
-                                    <td><?= $sim['deactivated_at'] ? date('d/m/Y', strtotime($sim['deactivated_at'])) : '-' ?></td>
-                                </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-        <?php endif; ?>
+
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Udleveringshistorik -->
 <div class="card">

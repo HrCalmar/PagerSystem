@@ -118,6 +118,7 @@ $router->post('/stations', [$stationController, 'store'], [$authMw, $adminMw]);
 $router->get('/stations/{id}', [$stationController, 'show'], [$authMw]);
 $router->get('/stations/{id}/edit', [$stationController, 'edit'], [$authMw, $adminMw]);
 $router->post('/stations/{id}/update', [$stationController, 'update'], [$authMw, $adminMw]);
+$router->post('/stations/{id}/delete', [$stationController, 'delete'], [$authMw, $adminMw]);
 
 // ==================== REPORTS ====================
 $router->get('/reports', [$reportController, 'index'], [$authMw]);
@@ -151,6 +152,11 @@ $router->post('/competencies/{id}/delete', [$competencyController, 'delete'], [$
 // ==================== SEARCH ====================
 $router->get('/search', [$searchController, 'index'], [$authMw]);
 $router->get('/search/ajax', [$searchController, 'ajax'], [$authMw]);
+
+// ==================== SETTINGS ====================
+$settingsController = new App\Controllers\SettingsController();
+$router->get('/settings', [$settingsController, 'index'], [$authMw, $adminMw]);
+$router->post('/settings/update', [$settingsController, 'update'], [$authMw, $adminMw]);
 
 // ==================== DISPATCH ====================
 $router->dispatch();

@@ -80,6 +80,17 @@ ob_start();
             
             <dt>Status</dt>
             <dd><?= status_badge($staff['status'], 'staff') ?></dd>
+            
+            <?php if (!empty($staff['ric_code'])): ?>
+			<dt>RIC kode</dt>
+			<dd><?= htmlspecialchars($staff['ric_code']) ?></dd>
+			<?php endif; ?>
+
+			<?php if (!empty($staff['odin_id'])): ?>
+			<dt>ODIN ID</dt>
+			<dd><?= htmlspecialchars($staff['odin_id']) ?></dd>
+			<?php endif; ?>
+            
         </dl>
         
         <?php if (Auth::hasRole('admin') && !$isDeleted): ?>

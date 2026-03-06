@@ -1,5 +1,4 @@
 <?php
-// src/Controllers/SearchController.php
 namespace App\Controllers;
 
 use App\Config\Database;
@@ -13,16 +12,17 @@ class SearchController {
         $this->db = Database::getInstance();
     }
     
-    public function search(): void {
+    public function index(): void {
         $query = trim($_GET['q'] ?? '');
+        $includeArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
         
-        if (strlen($query) < 2) {
+        if (empty($query)) {
             header('Location: /dashboard');
             exit;
         }
         
         $results = [
-            'pagers' => $this->searchPagers($query),
+            'pagers' => $this->searchPagers($query, $includeArchived),
             'staff' => $this->searchStaff($query),
             'stations' => $this->searchStations($query)
         ];
@@ -31,76 +31,77 @@ class SearchController {
         require __DIR__ . '/../../views/search/results.php';
     }
     
-    private function searchPagers(string $query): array {
-        $search = "%{$query}%";
-        
-        $sql = "SELECT p.id, p.serial_number, p.article_number, p.status,
-                       s.phone_number, st.name as staff_name
+    private function searchPagers(string $query, bool $includeArchived): array {
+        $search = '%' . $query . '%';
+        $sql = "SELECT DISTINCT p.id, p.serial_number, p.article_number, p.status,
+                       s.phone_number, st.name as staff_name, st.id as staff_id
                 FROM pagers p
                 LEFT JOIN sim_cards s ON s.pager_id = p.id AND s.status = 'active'
                 LEFT JOIN pager_assignments pa ON pa.pager_id = p.id AND pa.returned_at IS NULL
                 LEFT JOIN staff st ON st.id = pa.staff_id
-                WHERE p.status != 'archived'
-                  AND (p.serial_number LIKE ? OR p.article_number LIKE ? OR s.phone_number LIKE ?)
-                ORDER BY p.serial_number
-                LIMIT 20";
+                WHERE (p.serial_number LIKE ? 
+                     OR p.article_number LIKE ? 
+                     OR s.phone_number LIKE ?
+                     OR s.sim_number LIKE ?)";
         
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$search, $search, $search]);
+        if (!$includeArchived) {
+            $sql .= " AND p.status != 'archived'";
+        }
+        
+        if (Auth::isStationUser()) {
+            $sql .= " AND (p.status = 'in_stock' OR pa.staff_id IN (
+                SELECT staff_id FROM station_assignments 
+                WHERE station_id = ? AND end_date IS NULL
+            ))";
+            $stmt = $this->db->prepare($sql . " ORDER BY p.serial_number");
+            $stmt->execute([$search, $search, $search, $search, Auth::getStationId()]);
+        } else {
+            $stmt = $this->db->prepare($sql . " ORDER BY p.serial_number");
+            $stmt->execute([$search, $search, $search, $search]);
+        }
+        
         return $stmt->fetchAll();
     }
     
     private function searchStaff(string $query): array {
-        $search = "%{$query}%";
-        
+        $search = '%' . $query . '%';
         $sql = "SELECT s.id, s.name, s.employee_number, s.status,
-                       GROUP_CONCAT(DISTINCT st.name SEPARATOR ', ') as stations
+                       GROUP_CONCAT(DISTINCT st.name ORDER BY st.name SEPARATOR ', ') as stations
                 FROM staff s
                 LEFT JOIN station_assignments sa ON sa.staff_id = s.id AND sa.end_date IS NULL
                 LEFT JOIN stations st ON st.id = sa.station_id
                 WHERE s.deleted_at IS NULL
-                  AND (s.name LIKE ? OR s.employee_number LIKE ?)
-                GROUP BY s.id
-                ORDER BY s.name
-                LIMIT 20";
+                AND (s.name LIKE ? OR s.employee_number LIKE ?)";
         
         if (Auth::isStationUser()) {
-            $sql = "SELECT s.id, s.name, s.employee_number, s.status,
-                           GROUP_CONCAT(DISTINCT st.name SEPARATOR ', ') as stations
-                    FROM staff s
-                    INNER JOIN station_assignments sa ON sa.staff_id = s.id AND sa.end_date IS NULL
-                    LEFT JOIN stations st ON st.id = sa.station_id
-                    WHERE s.deleted_at IS NULL
-                      AND sa.station_id = ?
-                      AND (s.name LIKE ? OR s.employee_number LIKE ?)
-                    GROUP BY s.id
-                    ORDER BY s.name
-                    LIMIT 20";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([Auth::getStationId(), $search, $search]);
-            return $stmt->fetchAll();
+            $sql .= " AND sa.station_id = ?";
+            $stmt = $this->db->prepare($sql . " GROUP BY s.id ORDER BY s.name");
+            $stmt->execute([$search, $search, Auth::getStationId()]);
+        } else {
+            $stmt = $this->db->prepare($sql . " GROUP BY s.id ORDER BY s.name");
+            $stmt->execute([$search, $search]);
         }
         
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$search, $search]);
         return $stmt->fetchAll();
     }
     
     private function searchStations(string $query): array {
-        $search = "%{$query}%";
+        if (Auth::isStationUser()) {
+            return [];
+        }
         
-        $sql = "SELECT s.id, s.name, s.code,
-                       COUNT(DISTINCT sa.staff_id) as staff_count
-                FROM stations s
-                LEFT JOIN station_assignments sa ON sa.station_id = s.id AND sa.end_date IS NULL
-                WHERE s.name LIKE ? OR s.code LIKE ?
-                GROUP BY s.id
-                ORDER BY s.name
-                LIMIT 20";
-        
-        $stmt = $this->db->prepare($sql);
+        $search = '%' . $query . '%';
+        $stmt = $this->db->prepare(
+            "SELECT s.id, s.name, s.code,
+                    COUNT(DISTINCT sa.staff_id) as staff_count
+             FROM stations s
+             LEFT JOIN station_assignments sa ON sa.station_id = s.id AND sa.end_date IS NULL
+             WHERE s.name LIKE ? OR s.code LIKE ?
+             GROUP BY s.id
+             ORDER BY s.name"
+        );
         $stmt->execute([$search, $search]);
+        
         return $stmt->fetchAll();
     }
 }
