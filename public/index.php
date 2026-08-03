@@ -126,6 +126,7 @@ $router->post('/users',                     fn()    => (new UserController())->s
 $router->get('/users/{id}/edit',            fn($id) => (new UserController())->edit($id),        [$authMw, $adminMw]);
 $router->post('/users/{id}/update',         fn($id) => (new UserController())->update($id),      [$authMw, $adminMw]);
 $router->post('/users/{id}/reset-password', fn($id) => (new UserController())->resetPassword($id),[$authMw, $adminMw]);
+$router->get('/admin/login-attempts',       fn()    => (new UserController())->loginAttempts(),  [$authMw, $adminMw]);
 
 // ==================== AUDIT LOG ====================
 $router->get('/audit',      fn()    => (new AuditController())->index(),  [$authMw, $adminMw]);

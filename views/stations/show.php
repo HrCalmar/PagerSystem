@@ -9,7 +9,10 @@ ob_start();
     <h1><i class="fas fa-building"></i> <?= htmlspecialchars($station['name']) ?></h1>
     <?php if (Auth::hasRole('admin')): ?>
         <div class="page-actions">
-            <a href="/stations/<?= $station['id'] ?>/edit" class="btn btn-primary">
+            <button onclick="window.print()" class="btn no-print">
+                <i class="fas fa-print"></i> Print
+            </button>
+            <a href="/stations/<?= $station['id'] ?>/edit" class="btn btn-primary no-print">
                 <i class="fas fa-edit"></i> Rediger station
             </a>
         </div>
@@ -17,7 +20,7 @@ ob_start();
 </div>
 
 <?php if (isset($_GET['success'])): ?>
-    <div class="alert alert-success">
+    <div class="alert alert-success no-print">
         <i class="fas fa-check-circle alert-icon"></i>
         <div class="alert-content">
             <?= ['updated' => 'Station opdateret', 'deleted' => 'Station slettet'][$_GET['success']] ?? 'Handling udført' ?>
@@ -26,7 +29,7 @@ ob_start();
 <?php endif; ?>
 
 <?php if (isset($_GET['error'])): ?>
-    <div class="alert alert-error">
+    <div class="alert alert-error no-print">
         <i class="fas fa-exclamation-circle alert-icon"></i>
         <div class="alert-content"><?= htmlspecialchars($_GET['error']) ?></div>
     </div>
@@ -47,7 +50,6 @@ ob_start();
         <dt>Adresse</dt>
         <dd><?= htmlspecialchars($station['address']) ?></dd>
         <?php endif; ?>
-
     </dl>
 </div>
 
@@ -63,7 +65,7 @@ ob_start();
                     <th>Lønnummer</th>
                     <th>Aktive pagere</th>
                     <th>Kompetencer</th>
-                    <th></th>
+                    <th class="no-print"></th>
                 </tr>
             </thead>
             <tbody>
@@ -73,7 +75,7 @@ ob_start();
                     <td><?= htmlspecialchars($s['employee_number']) ?></td>
                     <td><?= $s['pager_count'] ?></td>
                     <td><?= htmlspecialchars($s['competencies'] ?? '-') ?></td>
-                    <td><a href="/staff/<?= $s['id'] ?>" class="btn btn-small"><i class="fas fa-eye"></i> Vis</a></td>
+                    <td class="no-print"><a href="/staff/<?= $s['id'] ?>" class="btn btn-small"><i class="fas fa-eye"></i> Vis</a></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -81,8 +83,42 @@ ob_start();
     <?php endif; ?>
 </div>
 
+<?php if (!empty($pagers)): ?>
+<div class="card">
+    <h2><i class="fas fa-pager"></i> Udleverede pagere</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Serienummer</th>
+                <th>Telefonnummer</th>
+                <th>Status</th>
+                <th>Udleveret til</th>
+                <th class="no-print"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($pagers as $p): ?>
+            <tr>
+                <td class="font-medium"><?= htmlspecialchars($p['serial_number']) ?></td>
+                <td><?= htmlspecialchars($p['phone_number'] ?? '-') ?></td>
+                <td><?= status_badge($p['status'], 'pager') ?></td>
+                <td>
+                    <a href="/staff/<?= $p['staff_id'] ?>" class="text-link">
+                        <i class="fas fa-user"></i> <?= htmlspecialchars($p['staff_name']) ?>
+                    </a>
+                </td>
+                <td class="no-print">
+                    <a href="/pagers/<?= $p['id'] ?>" class="btn btn-small"><i class="fas fa-eye"></i> Vis</a>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
 <?php if (Auth::hasRole('admin')): ?>
-<div class="card danger-zone">
+<div class="card danger-zone no-print">
     <h2><i class="fas fa-exclamation-triangle"></i> Fareområde</h2>
     <p>Sletning er kun mulig hvis ingen brandfolk er tilknyttet stationen.</p>
     <form method="POST" action="/stations/<?= $station['id'] ?>/delete"

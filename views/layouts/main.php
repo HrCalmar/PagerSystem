@@ -11,6 +11,15 @@ $currentPath = $_SERVER['REQUEST_URI'];
     <title><?= $title ?? 'Pager System' ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/app.css?v=1.9">
+    <style>
+    @media print {
+        .navbar, .no-print { display: none !important; }
+        .container { margin: 0; padding: 0; max-width: none; }
+        .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+        a { color: inherit; text-decoration: none; }
+        body { font-size: 12pt; }
+    }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -53,6 +62,9 @@ $currentPath = $_SERVER['REQUEST_URI'];
                     <?php if (Auth::hasRole('admin')): ?>
                         <a href="/users" class="nav-link <?= str_starts_with($currentPath, '/users') ? 'active' : '' ?>">
                             <i class="fas fa-users-cog"></i> <span>Brugere</span>
+                        </a>
+                        <a href="/audit" class="nav-link <?= str_starts_with($currentPath, '/audit') ? 'active' : '' ?>">
+                            <i class="fas fa-history"></i> <span>Aktivitetslog</span>
                         </a>
                     <?php endif; ?>
                 </div>

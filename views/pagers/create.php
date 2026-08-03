@@ -19,9 +19,9 @@ ob_start();
 <?php endif; ?>
 
 <div class="card">
-    <form method="POST" action="/pagers">
+    <form method="POST" action="/pagers" enctype="multipart/form-data">
         <?= CSRF::field() ?>
-        
+
         <div class="form-group">
             <label for="barcode_scan"><i class="fas fa-qrcode"></i> Scan Data Matrix</label>
             <div class="input-with-scanner">
@@ -32,25 +32,31 @@ ob_start();
             </div>
             <small class="form-help">Scanner udfylder automatisk serienummer og artikelnummer</small>
         </div>
-        
+
         <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--gray-200);">
-        
+
         <div class="form-group">
             <label for="serial_number"><i class="fas fa-barcode"></i> Serienummer *</label>
             <input type="text" id="serial_number" name="serial_number" value="<?= htmlspecialchars($_GET['serial_number'] ?? '') ?>" required>
         </div>
-        
+
         <div class="form-group">
             <label for="article_number"><i class="fas fa-tag"></i> Artikelnummer</label>
             <input type="text" id="article_number" name="article_number" value="<?= htmlspecialchars($_GET['article_number'] ?? '') ?>">
         </div>
-        
+
         <div class="form-group">
             <label for="purchase_date"><i class="fas fa-calendar"></i> Indkøbsdato</label>
             <input type="date" id="purchase_date" name="purchase_date" value="<?= $_GET['purchase_date'] ?? '' ?>">
             <small class="form-help">Valgfrit</small>
         </div>
-        
+
+        <div class="form-group">
+            <label for="programming_file"><i class="fas fa-file-code"></i> Programmeringsfil</label>
+            <input type="file" id="programming_file" name="programming_file" accept=".bin,.cps,.rcp,.dat,.hex,.s19,.srec,.mdf">
+            <small class="form-help">Valgfrit — BIN, CPS, RCP, DAT, HEX, S19, SREC eller MDF (maks. 10 MB)</small>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Opret</button>
             <a href="/pagers" class="btn"><i class="fas fa-times"></i> Annuller</a>
@@ -113,14 +119,14 @@ let currentFacingMode = "environment";
 function parseDataMatrix(scannedValue) {
     const value = scannedValue.trim();
     const parts = value.split(/\s+/);
-    
+
     if (parts.length >= 2) {
         return {
             serial: parts[0],
             article: parts.slice(1).join(' ')
         };
     }
-    
+
     return {
         serial: value,
         article: ''
@@ -129,11 +135,11 @@ function parseDataMatrix(scannedValue) {
 
 function handleBarcodeScan(value) {
     const parsed = parseDataMatrix(value);
-    
+
     document.getElementById('serial_number').value = parsed.serial;
     document.getElementById('article_number').value = parsed.article;
     document.getElementById('barcode_scan').value = '';
-    
+
     if (parsed.serial) {
         document.getElementById('purchase_date').focus();
     }
@@ -159,19 +165,19 @@ document.getElementById('barcode_scan').addEventListener('input', function(e) {
 function toggleMirror() {
     isMirrored = !isMirrored;
     const modal = document.getElementById('scanner-modal');
-    
+
     if (isMirrored) {
         modal.classList.add('scanner-mirrored');
     } else {
         modal.classList.remove('scanner-mirrored');
     }
-    
+
     localStorage.setItem('scanner_mirrored', isMirrored);
 }
 
 function switchCamera() {
     if (!html5QrCode) return;
-    
+
     html5QrCode.stop().then(() => {
         currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
         startCameraWithMode(currentFacingMode);
@@ -184,7 +190,7 @@ function startCameraWithMode(facingMode) {
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
             stopScanner();
-            
+
             if (targetField === 'barcode_scan') {
                 handleBarcodeScan(decodedText);
             } else {
@@ -193,7 +199,7 @@ function startCameraWithMode(facingMode) {
         }
     ).catch(err => {
         console.error("Scanner error:", err);
-        
+
         if (facingMode === "environment") {
             currentFacingMode = "user";
             startCameraWithMode("user");
@@ -206,17 +212,17 @@ function startCameraWithMode(facingMode) {
 
 function startScanner(fieldId) {
     targetField = fieldId;
-    
+
     isMirrored = localStorage.getItem('scanner_mirrored') === 'true';
     const modal = document.getElementById('scanner-modal');
     modal.classList.add('active');
-    
+
     if (isMirrored) {
         modal.classList.add('scanner-mirrored');
     } else {
         modal.classList.remove('scanner-mirrored');
     }
-    
+
     html5QrCode = new Html5Qrcode("scanner-container");
     currentFacingMode = "environment";
     startCameraWithMode(currentFacingMode);

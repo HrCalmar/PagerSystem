@@ -52,6 +52,23 @@ class StationService {
         return $stmt->fetchAll();
     }
 
+    public function getPagers(int $stationId): array {
+        $stmt = $this->db->prepare(
+            "SELECT p.id, p.serial_number, p.article_number, p.status,
+                    sc.phone_number,
+                    st.id as staff_id, st.name as staff_name
+             FROM pagers p
+             INNER JOIN pager_assignments pa ON pa.pager_id = p.id AND pa.returned_at IS NULL
+             INNER JOIN staff st ON st.id = pa.staff_id
+             INNER JOIN station_assignments sa ON sa.staff_id = st.id AND sa.end_date IS NULL
+             LEFT JOIN sim_cards sc ON sc.pager_id = p.id AND sc.status = 'active'
+             WHERE sa.station_id = ?
+             ORDER BY st.name, p.serial_number"
+        );
+        $stmt->execute([$stationId]);
+        return $stmt->fetchAll();
+    }
+
     public function nameExists(string $name, ?int $excludeId = null): bool {
         if ($excludeId !== null) {
             $stmt = $this->db->prepare("SELECT COUNT(*) FROM stations WHERE name = ? AND id != ? AND deleted_at IS NULL");

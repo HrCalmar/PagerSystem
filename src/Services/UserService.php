@@ -50,6 +50,7 @@ class UserService {
         if ($this->usernameExists($username)) {
             throw new Exception('Brugernavn eksisterer allerede');
         }
+        $this->validatePasswordComplexity($password);
 
         $stmt = $this->db->prepare(
             "INSERT INTO users (username, password_hash, name, role, station_id, status)
@@ -74,6 +75,7 @@ class UserService {
 
     public function resetPassword(int $id, string $password): void {
         if (empty($password)) throw new Exception('Password skal udfyldes');
+        $this->validatePasswordComplexity($password);
 
         $stmt = $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
         $stmt->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
@@ -97,14 +99,24 @@ class UserService {
         if (!$hash || !password_verify($currentPassword, $hash)) {
             throw new Exception('Nuværende password er forkert');
         }
-        if (strlen($newPassword) < 8) {
-            throw new Exception('Nyt password skal være mindst 8 tegn');
-        }
         if ($newPassword !== $confirmPassword) {
             throw new Exception('De to passwords matcher ikke');
         }
+        $this->validatePasswordComplexity($newPassword);
 
         $stmt = $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
         $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $userId]);
+    }
+
+    private function validatePasswordComplexity(string $password): void {
+        if (strlen($password) < 8) {
+            throw new Exception('Password skal være mindst 8 tegn');
+        }
+        if (!preg_match('/[a-zA-Z]/', $password)) {
+            throw new Exception('Password skal indeholde mindst ét bogstav');
+        }
+        if (!preg_match('/[0-9\W]/', $password)) {
+            throw new Exception('Password skal indeholde mindst ét tal eller specialtegn');
+        }
     }
 }

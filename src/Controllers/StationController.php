@@ -20,7 +20,8 @@ class StationController extends BaseController {
         $station = $this->service->getById((int)$id);
         if (!$station) $this->abort(404, 'Station ikke fundet');
 
-        $staff = $this->service->getStaff((int)$id);
+        $staff  = $this->service->getStaff((int)$id);
+        $pagers = $this->service->getPagers((int)$id);
         require __DIR__ . '/../../views/stations/show.php';
     }
 

@@ -113,13 +113,14 @@ class PagerService {
         }
 
         $stmt = $this->db->prepare(
-            "INSERT INTO pagers (serial_number, article_number, purchase_date, status)
-             VALUES (?, ?, ?, 'in_stock')"
+            "INSERT INTO pagers (serial_number, article_number, purchase_date, programming_file_path, status)
+             VALUES (?, ?, ?, ?, 'in_stock')"
         );
         $stmt->execute([
             $data['serial_number'],
-            $data['article_number'] ?: null,
-            $data['purchase_date']  ?: null
+            $data['article_number']        ?: null,
+            $data['purchase_date']         ?: null,
+            $data['programming_file_path'] ?? null,
         ]);
 
         return (int)$this->db->lastInsertId();
@@ -131,12 +132,13 @@ class PagerService {
         }
 
         $stmt = $this->db->prepare(
-            "UPDATE pagers SET serial_number = ?, article_number = ?, purchase_date = ? WHERE id = ?"
+            "UPDATE pagers SET serial_number = ?, article_number = ?, purchase_date = ?, programming_file_path = ? WHERE id = ?"
         );
         return $stmt->execute([
             $data['serial_number'],
-            $data['article_number'] ?: null,
-            $data['purchase_date']  ?: null,
+            $data['article_number']        ?: null,
+            $data['purchase_date']         ?: null,
+            $data['programming_file_path'] ?? null,
             $id
         ]);
     }

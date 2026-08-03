@@ -1,7 +1,7 @@
 <?php
 namespace App\Controllers;
 
-use App\Services\PagerService;
+use App\Services\{PagerService, PreparationService, DefectService};
 use App\Core\{Auth, BaseController};
 
 class PagerController extends BaseController {
@@ -30,8 +30,10 @@ class PagerController extends BaseController {
         $pager = $this->service->getById((int)$id);
         if (!$pager) $this->abort(404, 'Pager ikke fundet');
 
-        $history = $this->service->getHistory((int)$id);
-        $repairs = $this->service->getRepairs((int)$id);
+        $history            = $this->service->getHistory((int)$id);
+        $repairs            = $this->service->getRepairs((int)$id);
+        $preparationHistory = (new PreparationService())->getForPager((int)$id);
+        $defectHistory      = (new DefectService())->getForPager((int)$id);
 
         require __DIR__ . '/../../views/pagers/show.php';
     }
@@ -46,9 +48,10 @@ class PagerController extends BaseController {
 
         try {
             $data = [
-                'serial_number'  => trim($_POST['serial_number']),
-                'article_number' => trim($_POST['article_number'] ?? ''),
-                'purchase_date'  => trim($_POST['purchase_date']  ?? '')
+                'serial_number'         => trim($_POST['serial_number']),
+                'article_number'        => trim($_POST['article_number'] ?? ''),
+                'purchase_date'         => trim($_POST['purchase_date']  ?? ''),
+                'programming_file_path' => $this->handleProgrammingFileUpload(),
             ];
 
             if (empty($data['serial_number'])) {
@@ -73,11 +76,16 @@ class PagerController extends BaseController {
     public function update(string $id): void {
         $this->requireCsrf();
 
+        $pager = $this->service->getById((int)$id);
+        if (!$pager) $this->abort(404, 'Pager ikke fundet');
+
         try {
+            $newFile = $this->handleProgrammingFileUpload();
             $data = [
-                'serial_number'  => trim($_POST['serial_number']),
-                'article_number' => trim($_POST['article_number'] ?? ''),
-                'purchase_date'  => trim($_POST['purchase_date']  ?? '')
+                'serial_number'         => trim($_POST['serial_number']),
+                'article_number'        => trim($_POST['article_number'] ?? ''),
+                'purchase_date'         => trim($_POST['purchase_date']  ?? ''),
+                'programming_file_path' => $newFile ?? $pager['programming_file_path'],
             ];
 
             if (empty($data['serial_number'])) {
@@ -114,5 +122,28 @@ class PagerController extends BaseController {
             header('Location: /pagers?archived=1&error=' . urlencode($e->getMessage()));
         }
         exit;
+    }
+
+    private function handleProgrammingFileUpload(): ?string {
+        if (empty($_FILES['programming_file']['name'])) return null;
+
+        $file = $_FILES['programming_file'];
+        if ($file['error'] !== UPLOAD_ERR_OK) throw new \Exception('Fejl ved upload af programmeringsfil');
+
+        $allowedExts = ['bin', 'cps', 'rcp', 'dat', 'hex', 's19', 'srec', 'mdf'];
+        $ext         = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExts)) {
+            throw new \Exception('Programmeringsfil skal være BIN, CPS, RCP, DAT, HEX, S19, SREC eller MDF');
+        }
+
+        if ($file['size'] > 10 * 1024 * 1024) throw new \Exception('Programmeringsfil må maksimalt være 10 MB');
+
+        $name = bin2hex(random_bytes(16)) . '.' . $ext;
+        $dir  = __DIR__ . '/../../public/uploads/programming/';
+
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        if (!move_uploaded_file($file['tmp_name'], $dir . $name)) throw new \Exception('Kunne ikke gemme programmeringsfil');
+
+        return $name;
     }
 }

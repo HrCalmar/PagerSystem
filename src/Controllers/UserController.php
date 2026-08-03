@@ -76,4 +76,23 @@ class UserController extends BaseController {
         }
         exit;
     }
+
+    public function loginAttempts(): void {
+        $db      = \App\Config\Database::getInstance();
+        $perPage = 100;
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+
+        $filter = $_GET['filter'] ?? '';
+        $where  = $filter === 'failed' ? 'WHERE success = 0' : ($filter === 'success' ? 'WHERE success = 1' : '');
+
+        $total = (int)$db->query("SELECT COUNT(*) FROM login_attempts $where")->fetchColumn();
+
+        $stmt = $db->prepare(
+            "SELECT * FROM login_attempts $where ORDER BY attempted_at DESC LIMIT ? OFFSET ?"
+        );
+        $stmt->execute([$perPage, ($page - 1) * $perPage]);
+        $attempts = $stmt->fetchAll();
+
+        require __DIR__ . '/../../views/admin/login-attempts.php';
+    }
 }
