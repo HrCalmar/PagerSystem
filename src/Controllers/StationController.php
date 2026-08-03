@@ -1,57 +1,26 @@
 <?php
 namespace App\Controllers;
 
-use App\Config\Database;
 use App\Core\{Auth, BaseController};
-use App\Services\AuditService;
+use App\Services\StationService;
 
 class StationController extends BaseController {
-    private $db;
+    private StationService $service;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->service = new StationService();
     }
 
     public function index(): void {
-        $stmt = $this->db->query(
-            "SELECT s.*,
-                    COUNT(DISTINCT sa.staff_id) as staff_count,
-                    COUNT(DISTINCT pa.pager_id) as pager_count
-             FROM stations s
-             LEFT JOIN station_assignments sa ON sa.station_id = s.id AND sa.end_date IS NULL
-             LEFT JOIN pager_assignments pa ON pa.staff_id = sa.staff_id AND pa.returned_at IS NULL
-             WHERE s.deleted_at IS NULL
-             GROUP BY s.id
-             ORDER BY s.name"
-        );
-        $stations = $stmt->fetchAll();
-
+        $stations = $this->service->getAll();
         require __DIR__ . '/../../views/stations/index.php';
     }
 
     public function show(string $id): void {
-        $stmt = $this->db->prepare("SELECT * FROM stations WHERE id = ? AND deleted_at IS NULL");
-        $stmt->execute([$id]);
-        $station = $stmt->fetch();
-
+        $station = $this->service->getById((int)$id);
         if (!$station) $this->abort(404, 'Station ikke fundet');
 
-        $stmt = $this->db->prepare(
-            "SELECT s.*,
-                    COUNT(DISTINCT pa.id) as pager_count,
-                    GROUP_CONCAT(DISTINCT c.name SEPARATOR ', ') as competencies
-             FROM staff s
-             INNER JOIN station_assignments sa ON sa.staff_id = s.id
-             LEFT JOIN pager_assignments pa ON pa.staff_id = s.id AND pa.returned_at IS NULL
-             LEFT JOIN staff_competencies sc ON sc.staff_id = s.id
-             LEFT JOIN competencies c ON c.id = sc.competency_id
-             WHERE sa.station_id = ? AND sa.end_date IS NULL AND s.deleted_at IS NULL
-             GROUP BY s.id
-             ORDER BY s.name"
-        );
-        $stmt->execute([$id]);
-        $staff = $stmt->fetchAll();
-
+        $staff = $this->service->getStaff((int)$id);
         require __DIR__ . '/../../views/stations/show.php';
     }
 
@@ -63,22 +32,7 @@ class StationController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $name = trim($_POST['name'] ?? '');
-            if (empty($name)) {
-                throw new \Exception('Navn skal udfyldes');
-            }
-
-            $stmt = $this->db->prepare(
-                "INSERT INTO stations (name, code, address, phone, email) VALUES (?, ?, ?, ?, ?)"
-            );
-            $stmt->execute([
-                $name,
-                $_POST['code']    ?: null,
-                $_POST['address'] ?: null,
-                $_POST['phone']   ?: null,
-                $_POST['email']   ?: null,
-            ]);
-
+            $this->service->create($_POST, Auth::user()['id']);
             header('Location: /stations?success=created');
         } catch (\Exception $e) {
             header('Location: /stations/create?error=' . urlencode($e->getMessage()));
@@ -87,10 +41,7 @@ class StationController extends BaseController {
     }
 
     public function edit(string $id): void {
-        $stmt = $this->db->prepare("SELECT * FROM stations WHERE id = ? AND deleted_at IS NULL");
-        $stmt->execute([$id]);
-        $station = $stmt->fetch();
-
+        $station = $this->service->getById((int)$id);
         if (!$station) $this->abort(404, 'Station ikke fundet');
 
         require __DIR__ . '/../../views/stations/edit.php';
@@ -100,33 +51,7 @@ class StationController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $name = trim($_POST['name'] ?? '');
-            if (empty($name)) {
-                throw new \Exception('Navn skal udfyldes');
-            }
-
-            $stmt = $this->db->prepare(
-                "SELECT COUNT(*) FROM stations WHERE name = ? AND id != ? AND deleted_at IS NULL"
-            );
-            $stmt->execute([$name, $id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('En station med dette navn eksisterer allerede');
-            }
-
-            $stmt = $this->db->prepare(
-                "UPDATE stations SET name = ?, code = ?, address = ?, phone = ?, email = ? WHERE id = ?"
-            );
-            $stmt->execute([
-                $name,
-                $_POST['code']    ?: null,
-                $_POST['address'] ?: null,
-                $_POST['phone']   ?: null,
-                $_POST['email']   ?: null,
-                $id,
-            ]);
-
-            (new AuditService())->log(Auth::user()['id'], 'update_station', 'station', (int)$id, [], ['name' => $name]);
-
+            $this->service->update((int)$id, $_POST, Auth::user()['id']);
             header('Location: /stations/' . $id . '?success=updated');
         } catch (\Exception $e) {
             header('Location: /stations/' . $id . '/edit?error=' . urlencode($e->getMessage()));
@@ -138,17 +63,7 @@ class StationController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $stmt = $this->db->prepare(
-                "SELECT COUNT(*) FROM station_assignments WHERE station_id = ? AND end_date IS NULL"
-            );
-            $stmt->execute([$id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('Kan ikke slette station med aktive brandfolk');
-            }
-
-            $stmt = $this->db->prepare("UPDATE stations SET deleted_at = NOW() WHERE id = ?");
-            $stmt->execute([$id]);
-
+            $this->service->delete((int)$id, Auth::user()['id']);
             header('Location: /stations?success=deleted');
         } catch (\Exception $e) {
             header('Location: /stations/' . $id . '?error=' . urlencode($e->getMessage()));

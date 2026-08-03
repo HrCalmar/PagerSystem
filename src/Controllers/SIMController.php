@@ -2,7 +2,6 @@
 namespace App\Controllers;
 
 use App\Services\SIMService;
-use App\Config\Database;
 use App\Core\{Auth, BaseController};
 
 class SIMController extends BaseController {
@@ -37,12 +36,9 @@ class SIMController extends BaseController {
     public function deactivate(string $simId): void {
         $this->requireCsrf();
 
-        try {
-            $db   = Database::getInstance();
-            $stmt = $db->prepare("SELECT pager_id FROM sim_cards WHERE id = ?");
-            $stmt->execute([$simId]);
-            $pagerId = $stmt->fetchColumn();
+        $pagerId = $this->service->getPagerId((int)$simId);
 
+        try {
             $this->service->deactivate((int)$simId, Auth::user()['id']);
             header('Location: /pagers/' . $pagerId . '?success=sim_deactivated');
         } catch (\Exception $e) {

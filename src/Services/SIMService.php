@@ -82,6 +82,13 @@ class SIMService {
         }
     }
 
+    public function getPagerId(int $simId): ?int {
+        $stmt = $this->db->prepare("SELECT pager_id FROM sim_cards WHERE id = ?");
+        $stmt->execute([$simId]);
+        $result = $stmt->fetchColumn();
+        return $result !== false ? (int)$result : null;
+    }
+
     public function getHistory(int $pagerId): array {
         $stmt = $this->db->prepare(
             "SELECT * FROM sim_cards WHERE pager_id = ? ORDER BY activated_at DESC"
