@@ -73,6 +73,13 @@ class StaffWorkflowService {
         try {
             $staff = $this->getStaff($staffId);
 
+            $activeAssignments = $this->getActivePagerAssignments($staffId);
+            if (!empty($activeAssignments)) {
+                throw new Exception(
+                    "Brandmand har " . count($activeAssignments) . " aktive pagere - returner disse først"
+                );
+            }
+
             $stmt = $this->db->prepare("UPDATE staff SET deleted_at = NOW() WHERE id = ?");
             $stmt->execute([$staffId]);
 

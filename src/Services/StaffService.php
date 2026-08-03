@@ -7,9 +7,11 @@ use PDO;
 
 class StaffService {
     private PDO $db;
+    private AuditService $audit;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->db    = Database::getInstance();
+        $this->audit = new AuditService();
     }
 
     public function getAll(array $filters = []): array {
@@ -32,7 +34,7 @@ class StaffService {
 
         if (!empty($filters['search'])) {
             $sql .= " AND (s.name LIKE ? OR s.employee_number LIKE ? OR s.ric_code LIKE ? OR s.odin_id LIKE ?)";
-            $search    = '%' . $filters['search'] . '%';
+            $search   = '%' . $filters['search'] . '%';
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -75,21 +77,56 @@ class StaffService {
         return $staff;
     }
 
-    public function create(array $data): int {
-        $stmt = $this->db->prepare(
-            "INSERT INTO staff (name, employee_number, ric_code, odin_id, status) VALUES (?, ?, ?, ?, 'active')"
-        );
-        $stmt->execute([
-            $data['name'],
-            $data['employee_number'],
-            $data['ric_code'] ?: null,
-            $data['odin_id']  ?: null,
-        ]);
+    public function create(array $data, array $stationIds, int $userId): int {
+        if (empty($data['name'])) throw new \Exception('Navn skal udfyldes');
+        if (empty($data['employee_number'])) throw new \Exception('Lønnummer skal udfyldes');
+        if (empty($stationIds)) throw new \Exception('Du skal vælge mindst én station');
 
-        return (int)$this->db->lastInsertId();
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND deleted_at IS NULL");
+            $stmt->execute([$data['employee_number']]);
+            if ($stmt->fetchColumn() > 0) throw new \Exception('Lønnummer eksisterer allerede');
+
+            $stmt = $this->db->prepare(
+                "INSERT INTO staff (name, employee_number, ric_code, odin_id, status) VALUES (?, ?, ?, ?, 'active')"
+            );
+            $stmt->execute([
+                $data['name'],
+                $data['employee_number'],
+                $data['ric_code'] ?: null,
+                $data['odin_id']  ?: null,
+            ]);
+
+            $id   = (int)$this->db->lastInsertId();
+            $stmt = $this->db->prepare(
+                "INSERT INTO station_assignments (staff_id, station_id, start_date) VALUES (?, ?, ?)"
+            );
+            foreach ($stationIds as $stationId) {
+                $stmt->execute([$id, (int)$stationId, date('Y-m-d')]);
+            }
+
+            $this->audit->log($userId, 'create_staff', 'staff', $id, null, [
+                'name'            => $data['name'],
+                'employee_number' => $data['employee_number'],
+            ]);
+
+            $this->db->commit();
+            return $id;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function update(int $id, array $data): bool {
+        if (empty($data['name'])) throw new \Exception('Navn skal udfyldes');
+        if (empty($data['employee_number'])) throw new \Exception('Lønnummer skal udfyldes');
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND id != ? AND deleted_at IS NULL");
+        $stmt->execute([$data['employee_number'], $id]);
+        if ($stmt->fetchColumn() > 0) throw new \Exception('Lønnummer eksisterer allerede på en anden brandmand');
+
         $stmt = $this->db->prepare(
             "UPDATE staff SET name = ?, employee_number = ?, ric_code = ?, odin_id = ? WHERE id = ?"
         );

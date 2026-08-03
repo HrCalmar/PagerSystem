@@ -81,10 +81,10 @@ class StationService {
         );
         $stmt->execute([
             $name,
-            $data['code']    ?: null,
-            $data['address'] ?: null,
-            $data['phone']   ?: null,
-            $data['email']   ?: null,
+            ($data['code']    ?? '') ?: null,
+            ($data['address'] ?? '') ?: null,
+            ($data['phone']   ?? '') ?: null,
+            ($data['email']   ?? '') ?: null,
         ]);
 
         $id = (int)$this->db->lastInsertId();
@@ -102,10 +102,10 @@ class StationService {
         );
         $stmt->execute([
             $name,
-            $data['code']    ?: null,
-            $data['address'] ?: null,
-            $data['phone']   ?: null,
-            $data['email']   ?: null,
+            ($data['code']    ?? '') ?: null,
+            ($data['address'] ?? '') ?: null,
+            ($data['phone']   ?? '') ?: null,
+            ($data['email']   ?? '') ?: null,
             $id,
         ]);
 

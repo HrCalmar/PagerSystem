@@ -4,19 +4,16 @@ namespace App\Controllers;
 use App\Services\{StaffService, StaffWorkflowService, PagerService};
 use App\Config\Database;
 use App\Core\{Auth, BaseController};
-use PDO;
 
 class StaffController extends BaseController {
-    private StaffService $service;
+    private StaffService         $service;
     private StaffWorkflowService $workflow;
-    private PagerService $pagerService;
-    private PDO $db;
+    private PagerService         $pagerService;
 
     public function __construct() {
         $this->service      = new StaffService();
         $this->workflow     = new StaffWorkflowService();
         $this->pagerService = new PagerService();
-        $this->db           = Database::getInstance();
     }
 
     public function index(): void {
@@ -34,12 +31,13 @@ class StaffController extends BaseController {
         $staff = $this->service->getById((int)$id, true);
         if (!$staff) $this->abort(404, 'Brandmand ikke fundet');
 
+        $db              = Database::getInstance();
         $stations        = $this->service->getStations((int)$id);
         $competencies    = $this->service->getCompetencies((int)$id);
         $activePagers    = $this->service->getActivePagers((int)$id);
         $pagerHistory    = $this->service->getPagers((int)$id);
-        $allStations     = $this->db->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
-        $allCompetencies = $this->db->query("SELECT id, name FROM competencies ORDER BY name")->fetchAll();
+        $allStations     = $db->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
+        $allCompetencies = $db->query("SELECT id, name FROM competencies ORDER BY name")->fetchAll();
         $availablePagers = $this->pagerService->getAvailable();
         $isDeleted       = !empty($staff['deleted_at']);
 
@@ -47,45 +45,26 @@ class StaffController extends BaseController {
     }
 
     public function create(): void {
-        $stations = $this->db->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
+        $stations = Database::getInstance()->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
         require __DIR__ . '/../../views/staff/create.php';
     }
 
     public function store(): void {
         $this->requireCsrf();
 
-        $this->db->beginTransaction();
         try {
             $data = [
                 'name'            => trim($_POST['name']),
                 'employee_number' => trim($_POST['employee_number']),
                 'ric_code'        => preg_replace('/\D/', '', $_POST['ric_code'] ?? ''),
-                'odin_id'         => preg_replace('/\D/', '', $_POST['odin_id'] ?? ''),
+                'odin_id'         => preg_replace('/\D/', '', $_POST['odin_id']  ?? ''),
             ];
 
-            if (empty($data['name'])) throw new \Exception('Navn skal udfyldes');
-            if (empty($data['employee_number'])) throw new \Exception('Lønnummer skal udfyldes');
-            if (empty($_POST['station_ids']) || !is_array($_POST['station_ids'])) {
-                throw new \Exception('Du skal vælge mindst én station');
-            }
+            $stationIds = is_array($_POST['station_ids'] ?? null) ? $_POST['station_ids'] : [];
+            $id         = $this->service->create($data, $stationIds, Auth::user()['id']);
 
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND deleted_at IS NULL");
-            $stmt->execute([$data['employee_number']]);
-            if ($stmt->fetchColumn() > 0) throw new \Exception('Lønnummer eksisterer allerede');
-
-            $id = $this->service->create($data);
-
-            $stmt = $this->db->prepare(
-                "INSERT INTO station_assignments (staff_id, station_id, start_date) VALUES (?, ?, ?)"
-            );
-            foreach ($_POST['station_ids'] as $stationId) {
-                $stmt->execute([$id, (int)$stationId, date('Y-m-d')]);
-            }
-
-            $this->db->commit();
             header('Location: /staff/' . $id . '?success=created');
         } catch (\Exception $e) {
-            $this->db->rollBack();
             header('Location: /staff/create?error=' . urlencode($e->getMessage()) .
                    '&name=' . urlencode($_POST['name'] ?? '') .
                    '&employee_number=' . urlencode($_POST['employee_number'] ?? ''));
@@ -108,15 +87,8 @@ class StaffController extends BaseController {
                 'name'            => trim($_POST['name']),
                 'employee_number' => trim($_POST['employee_number']),
                 'ric_code'        => preg_replace('/\D/', '', $_POST['ric_code'] ?? ''),
-                'odin_id'         => preg_replace('/\D/', '', $_POST['odin_id'] ?? ''),
+                'odin_id'         => preg_replace('/\D/', '', $_POST['odin_id']  ?? ''),
             ];
-
-            if (empty($data['name'])) throw new \Exception('Navn skal udfyldes');
-            if (empty($data['employee_number'])) throw new \Exception('Lønnummer skal udfyldes');
-
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff WHERE employee_number = ? AND id != ? AND deleted_at IS NULL");
-            $stmt->execute([$data['employee_number'], $id]);
-            if ($stmt->fetchColumn() > 0) throw new \Exception('Lønnummer eksisterer allerede på en anden brandmand');
 
             $this->service->update((int)$id, $data);
             header('Location: /staff/' . $id . '?success=updated');
