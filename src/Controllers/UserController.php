@@ -1,31 +1,23 @@
 <?php
 namespace App\Controllers;
 
-use App\Config\Database;
 use App\Core\BaseController;
-use PDO;
+use App\Services\UserService;
 
 class UserController extends BaseController {
-    private PDO $db;
+    private UserService $service;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->service = new UserService();
     }
 
     public function index(): void {
-        $stmt = $this->db->query(
-            "SELECT u.*, s.name as station_name
-             FROM users u
-             LEFT JOIN stations s ON s.id = u.station_id
-             ORDER BY u.created_at DESC"
-        );
-        $users = $stmt->fetchAll();
-
+        $users = $this->service->getAll();
         require __DIR__ . '/../../views/users/index.php';
     }
 
     public function create(): void {
-        $stations = $this->db->query("SELECT id, name FROM stations ORDER BY name")->fetchAll();
+        $stations = $this->service->getStations();
         require __DIR__ . '/../../views/users/create.php';
     }
 
@@ -33,38 +25,13 @@ class UserController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $username  = trim($_POST['username']);
-            $password  = trim($_POST['password']);
-            $name      = trim($_POST['name']);
-            $role      = $_POST['role'];
-            $stationId = !empty($_POST['station_id']) ? (int)$_POST['station_id'] : null;
-
-            if (empty($username) || empty($password) || empty($name)) {
-                throw new \Exception('Brugernavn, password og navn skal udfyldes');
-            }
-
-            if (!in_array($role, ['admin', 'global_read', 'station_read'])) {
-                throw new \Exception('Ugyldig rolle');
-            }
-
-            if ($role === 'station_read' && !$stationId) {
-                throw new \Exception('Station skal vælges for station-brugere');
-            }
-
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('Brugernavn eksisterer allerede');
-            }
-
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-
-            $stmt = $this->db->prepare(
-                "INSERT INTO users (username, password_hash, name, role, station_id, status)
-                 VALUES (?, ?, ?, ?, ?, 'active')"
+            $this->service->create(
+                trim($_POST['username']),
+                trim($_POST['password']),
+                trim($_POST['name']),
+                $_POST['role'],
+                !empty($_POST['station_id']) ? (int)$_POST['station_id'] : null
             );
-            $stmt->execute([$username, $hash, $name, $role, $stationId]);
-
             header('Location: /users?success=created');
         } catch (\Exception $e) {
             header('Location: /users/create?error=' . urlencode($e->getMessage()));
@@ -73,13 +40,10 @@ class UserController extends BaseController {
     }
 
     public function edit(string $id): void {
-        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = ?");
-        $stmt->execute([$id]);
-        $user = $stmt->fetch();
-
+        $user = $this->service->getById((int)$id);
         if (!$user) $this->abort(404, 'Bruger ikke fundet');
 
-        $stations = $this->db->query("SELECT id, name FROM stations ORDER BY name")->fetchAll();
+        $stations = $this->service->getStations();
         require __DIR__ . '/../../views/users/edit.php';
     }
 
@@ -87,24 +51,13 @@ class UserController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $name      = trim($_POST['name']);
-            $role      = $_POST['role'];
-            $stationId = !empty($_POST['station_id']) ? (int)$_POST['station_id'] : null;
-            $status    = $_POST['status'];
-
-            if (!in_array($role, ['admin', 'global_read', 'station_read'])) {
-                throw new \Exception('Ugyldig rolle');
-            }
-
-            if ($role === 'station_read' && !$stationId) {
-                throw new \Exception('Station skal vælges for station-brugere');
-            }
-
-            $stmt = $this->db->prepare(
-                "UPDATE users SET name = ?, role = ?, station_id = ?, status = ? WHERE id = ?"
+            $this->service->update(
+                (int)$id,
+                trim($_POST['name']),
+                $_POST['role'],
+                !empty($_POST['station_id']) ? (int)$_POST['station_id'] : null,
+                $_POST['status']
             );
-            $stmt->execute([$name, $role, $stationId, $status, $id]);
-
             header('Location: /users?success=updated');
         } catch (\Exception $e) {
             header('Location: /users/' . $id . '/edit?error=' . urlencode($e->getMessage()));
@@ -116,17 +69,7 @@ class UserController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $password = trim($_POST['password']);
-
-            if (empty($password)) {
-                throw new \Exception('Password skal udfyldes');
-            }
-
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-
-            $stmt = $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-            $stmt->execute([$hash, $id]);
-
+            $this->service->resetPassword((int)$id, trim($_POST['password']));
             header('Location: /users?success=password_reset');
         } catch (\Exception $e) {
             header('Location: /users/' . $id . '/edit?error=' . urlencode($e->getMessage()));

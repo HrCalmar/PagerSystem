@@ -1,42 +1,26 @@
 <?php
 namespace App\Controllers;
 
-use App\Config\Database;
 use App\Core\{Auth, BaseController};
-use PDO;
+use App\Services\UserService;
 
 class ProfileController extends BaseController {
-    private PDO $db;
+    private UserService $service;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->service = new UserService();
     }
 
     public function show(): void {
-        $userId = Auth::user()['id'];
-
-        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch();
-
+        $user = $this->service->getById(Auth::user()['id']);
         require __DIR__ . '/../../views/profile/show.php';
     }
 
     public function update(): void {
         $this->requireCsrf();
 
-        $userId = Auth::user()['id'];
-
         try {
-            $name = trim($_POST['name']);
-
-            if (empty($name)) {
-                throw new \Exception('Navn skal udfyldes');
-            }
-
-            $stmt = $this->db->prepare("UPDATE users SET name = ? WHERE id = ?");
-            $stmt->execute([$name, $userId]);
-
+            $this->service->updateName(Auth::user()['id'], trim($_POST['name']));
             header('Location: /profile?success=updated');
         } catch (\Exception $e) {
             header('Location: /profile?error=' . urlencode($e->getMessage()));
@@ -47,33 +31,13 @@ class ProfileController extends BaseController {
     public function changePassword(): void {
         $this->requireCsrf();
 
-        $userId = Auth::user()['id'];
-
         try {
-            $currentPassword = $_POST['current_password'];
-            $newPassword     = $_POST['new_password'];
-            $confirmPassword = $_POST['confirm_password'];
-
-            $stmt = $this->db->prepare("SELECT password_hash FROM users WHERE id = ?");
-            $stmt->execute([$userId]);
-            $user = $stmt->fetch();
-
-            if (!password_verify($currentPassword, $user['password_hash'])) {
-                throw new \Exception('Nuværende password er forkert');
-            }
-
-            if (strlen($newPassword) < 8) {
-                throw new \Exception('Nyt password skal være mindst 8 tegn');
-            }
-
-            if ($newPassword !== $confirmPassword) {
-                throw new \Exception('De to passwords matcher ikke');
-            }
-
-            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-            $stmt = $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-            $stmt->execute([$hash, $userId]);
-
+            $this->service->changePassword(
+                Auth::user()['id'],
+                $_POST['new_password'],
+                $_POST['confirm_password'],
+                $_POST['current_password']
+            );
             header('Location: /profile?success=password_changed');
         } catch (\Exception $e) {
             header('Location: /profile?error=' . urlencode($e->getMessage()));

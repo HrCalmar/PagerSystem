@@ -1,31 +1,18 @@
 <?php
 namespace App\Controllers;
 
-use App\Config\Database;
 use App\Core\BaseController;
-use PDO;
+use App\Services\CompetencyService;
 
 class CompetencyController extends BaseController {
-    private PDO $db;
+    private CompetencyService $service;
 
     public function __construct() {
-        $this->db = Database::getInstance();
+        $this->service = new CompetencyService();
     }
 
     public function index(): void {
-        $stmt = $this->db->query(
-            "SELECT c.*,
-                    COUNT(sc.id) as staff_count,
-                    SUM(CASE WHEN sc.expiry_date < CURDATE() THEN 1 ELSE 0 END) as expired_count,
-                    SUM(CASE WHEN sc.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as expiring_soon_count
-             FROM competencies c
-             LEFT JOIN staff_competencies sc ON sc.competency_id = c.id
-             LEFT JOIN staff s ON s.id = sc.staff_id AND s.deleted_at IS NULL
-             GROUP BY c.id
-             ORDER BY c.name"
-        );
-        $competencies = $stmt->fetchAll();
-
+        $competencies = $this->service->getAll();
         require __DIR__ . '/../../views/competencies/index.php';
     }
 
@@ -37,25 +24,11 @@ class CompetencyController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $name            = trim($_POST['name']);
-            $description     = trim($_POST['description'] ?? '');
-            $requiresRenewal = isset($_POST['requires_renewal']) ? 1 : 0;
-
-            if (empty($name)) {
-                throw new \Exception('Navn skal udfyldes');
-            }
-
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM competencies WHERE name = ?");
-            $stmt->execute([$name]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('Kompetence med dette navn eksisterer allerede');
-            }
-
-            $stmt = $this->db->prepare(
-                "INSERT INTO competencies (name, description, requires_renewal) VALUES (?, ?, ?)"
+            $this->service->create(
+                trim($_POST['name']),
+                trim($_POST['description'] ?? '') ?: null,
+                isset($_POST['requires_renewal'])
             );
-            $stmt->execute([$name, $description ?: null, $requiresRenewal]);
-
             header('Location: /competencies?success=created');
         } catch (\Exception $e) {
             header('Location: /competencies/create?error=' . urlencode($e->getMessage()));
@@ -64,34 +37,15 @@ class CompetencyController extends BaseController {
     }
 
     public function show(string $id): void {
-        $stmt = $this->db->prepare("SELECT * FROM competencies WHERE id = ?");
-        $stmt->execute([$id]);
-        $competency = $stmt->fetch();
-
+        $competency = $this->service->getById((int)$id);
         if (!$competency) $this->abort(404, 'Kompetence ikke fundet');
 
-        $stmt = $this->db->prepare(
-            "SELECT s.*, sc.obtained_date, sc.expiry_date, sc.id as staff_competency_id,
-                    GROUP_CONCAT(DISTINCT st.name SEPARATOR ', ') as stations
-             FROM staff_competencies sc
-             INNER JOIN staff s ON s.id = sc.staff_id
-             LEFT JOIN station_assignments sa ON sa.staff_id = s.id AND sa.end_date IS NULL
-             LEFT JOIN stations st ON st.id = sa.station_id
-             WHERE sc.competency_id = ? AND s.deleted_at IS NULL
-             GROUP BY s.id, sc.id
-             ORDER BY s.name"
-        );
-        $stmt->execute([$id]);
-        $staffWithCompetency = $stmt->fetchAll();
-
+        $staffWithCompetency = $this->service->getStaffWithCompetency((int)$id);
         require __DIR__ . '/../../views/competencies/show.php';
     }
 
     public function edit(string $id): void {
-        $stmt = $this->db->prepare("SELECT * FROM competencies WHERE id = ?");
-        $stmt->execute([$id]);
-        $competency = $stmt->fetch();
-
+        $competency = $this->service->getById((int)$id);
         if (!$competency) $this->abort(404, 'Kompetence ikke fundet');
 
         require __DIR__ . '/../../views/competencies/edit.php';
@@ -101,25 +55,12 @@ class CompetencyController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $name            = trim($_POST['name']);
-            $description     = trim($_POST['description'] ?? '');
-            $requiresRenewal = isset($_POST['requires_renewal']) ? 1 : 0;
-
-            if (empty($name)) {
-                throw new \Exception('Navn skal udfyldes');
-            }
-
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM competencies WHERE name = ? AND id != ?");
-            $stmt->execute([$name, $id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('Kompetence med dette navn eksisterer allerede');
-            }
-
-            $stmt = $this->db->prepare(
-                "UPDATE competencies SET name = ?, description = ?, requires_renewal = ? WHERE id = ?"
+            $this->service->update(
+                (int)$id,
+                trim($_POST['name']),
+                trim($_POST['description'] ?? '') ?: null,
+                isset($_POST['requires_renewal'])
             );
-            $stmt->execute([$name, $description ?: null, $requiresRenewal, $id]);
-
             header('Location: /competencies/' . $id . '?success=updated');
         } catch (\Exception $e) {
             header('Location: /competencies/' . $id . '/edit?error=' . urlencode($e->getMessage()));
@@ -131,15 +72,7 @@ class CompetencyController extends BaseController {
         $this->requireCsrf();
 
         try {
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff_competencies WHERE competency_id = ?");
-            $stmt->execute([$id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new \Exception('Kan ikke slette - kompetencen er tildelt til brandfolk');
-            }
-
-            $stmt = $this->db->prepare("DELETE FROM competencies WHERE id = ?");
-            $stmt->execute([$id]);
-
+            $this->service->delete((int)$id);
             header('Location: /competencies?success=deleted');
         } catch (\Exception $e) {
             header('Location: /competencies/' . $id . '?error=' . urlencode($e->getMessage()));
@@ -148,27 +81,8 @@ class CompetencyController extends BaseController {
     }
 
     public function expiring(): void {
-        $days = (int)($_GET['days'] ?? 30);
-
-        $stmt = $this->db->prepare(
-            "SELECT s.id as staff_id, s.name as staff_name, s.employee_number,
-                    c.id as competency_id, c.name as competency_name, c.requires_renewal,
-                    sc.expiry_date, sc.id as staff_competency_id,
-                    GROUP_CONCAT(DISTINCT st.name SEPARATOR ', ') as stations,
-                    DATEDIFF(sc.expiry_date, CURDATE()) as days_until_expiry
-             FROM staff_competencies sc
-             INNER JOIN staff s ON s.id = sc.staff_id AND s.deleted_at IS NULL AND s.status = 'active'
-             INNER JOIN competencies c ON c.id = sc.competency_id
-             LEFT JOIN station_assignments sa ON sa.staff_id = s.id AND sa.end_date IS NULL
-             LEFT JOIN stations st ON st.id = sa.station_id
-             WHERE sc.expiry_date IS NOT NULL
-               AND sc.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
-             GROUP BY sc.id
-             ORDER BY sc.expiry_date ASC"
-        );
-        $stmt->execute([$days]);
-        $expiringCompetencies = $stmt->fetchAll();
-
+        $days                 = (int)($_GET['days'] ?? 30);
+        $expiringCompetencies = $this->service->getExpiring($days);
         require __DIR__ . '/../../views/competencies/expiring.php';
     }
 }
