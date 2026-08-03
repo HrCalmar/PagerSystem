@@ -77,14 +77,12 @@ class StationService {
         if ($this->nameExists($name)) throw new Exception('En station med dette navn eksisterer allerede');
 
         $stmt = $this->db->prepare(
-            "INSERT INTO stations (name, code, address, phone, email) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO stations (name, code, address) VALUES (?, ?, ?)"
         );
         $stmt->execute([
             $name,
             ($data['code']    ?? '') ?: null,
             ($data['address'] ?? '') ?: null,
-            ($data['phone']   ?? '') ?: null,
-            ($data['email']   ?? '') ?: null,
         ]);
 
         $id = (int)$this->db->lastInsertId();
@@ -98,14 +96,12 @@ class StationService {
         if ($this->nameExists($name, $id)) throw new Exception('En station med dette navn eksisterer allerede');
 
         $stmt = $this->db->prepare(
-            "UPDATE stations SET name = ?, code = ?, address = ?, phone = ?, email = ? WHERE id = ?"
+            "UPDATE stations SET name = ?, code = ?, address = ? WHERE id = ?"
         );
         $stmt->execute([
             $name,
             ($data['code']    ?? '') ?: null,
             ($data['address'] ?? '') ?: null,
-            ($data['phone']   ?? '') ?: null,
-            ($data['email']   ?? '') ?: null,
             $id,
         ]);
 
