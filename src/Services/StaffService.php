@@ -141,7 +141,8 @@ class StaffService {
 
     public function getStations(int $staffId): array {
         $stmt = $this->db->prepare(
-            "SELECT sa.*, st.name as station_name
+            "SELECT sa.id as assignment_id, sa.start_date, sa.end_date,
+                    st.id, st.name
              FROM station_assignments sa
              INNER JOIN stations st ON st.id = sa.station_id
              WHERE sa.staff_id = ?
@@ -153,7 +154,8 @@ class StaffService {
 
     public function getCompetencies(int $staffId): array {
         $stmt = $this->db->prepare(
-            "SELECT sc.*, c.name as competency_name, c.requires_renewal
+            "SELECT sc.id as staff_competency_id, sc.obtained_date, sc.expiry_date,
+                    c.id as competency_id, c.name, c.requires_renewal
              FROM staff_competencies sc
              INNER JOIN competencies c ON c.id = sc.competency_id
              WHERE sc.staff_id = ?
