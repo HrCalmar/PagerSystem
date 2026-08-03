@@ -11,11 +11,13 @@ Webbaseret system til administration af pagere, brandfolk og stationer for bered
 ## Features
 
 - **Pager-administration** – Opret, rediger, arkiver og spor pagere gennem hele livscyklussen
-- **Workflow-håndtering** – Reserver, udlever, returner og send til reparation
+- **Workflow-håndtering** – Reserver, udlever, returner og send til reparation/klargøring
 - **SIM-kort tracking** – Tilknyt telefonnumre med fuld historik
 - **Brandfolk** – Administrer personale med stationstilknytninger og kompetencer
+- **Kompetencer** – Tildel kompetencer til brandfolk og spor udløbsdatoer
 - **Stationer** – Organisér brandfolk og pagere pr. station
-- **Rapporter** – Statusoverblik, telefonnummerlister, manglende pagere
+- **Søgning** – Live søgning på pagere, brandfolk og stationer
+- **Rapporter** – Statusoverblik, telefonnummerlister, manglende pagere og CSV-eksport
 - **Rollebaseret adgang** – Admin, global læser, station læser
 - **Audit log** – Fuld sporbarhed på alle handlinger
 
@@ -83,32 +85,16 @@ php scripts/create_user.php
 ## Pager Status Flow
 
 ```
-in_stock → reserved → issued → for_preparation → in_stock
-                ↓                      ↓
-           in_repair ←────────────────┘
-                ↓
-             defect
+in_stock → reserved ──┐
+    ↑                  ↓
+    │               issued
+    │            ↙     ↓     ↘
+    │       in_stock  in_repair  for_preparation
+    │                   ↓              ↓
+    └───────────────────┴──────────────┘
+
+Fra issued eller in_repair: → defect
 ```
-
-## API Endpoints
-
-### Pagere
-- `GET /pagers` – Liste over pagere
-- `GET /pagers/{id}` – Vis pager
-- `POST /pagers` – Opret pager
-- `POST /pagers/{id}/issue` – Udlever
-- `POST /pagers/{id}/return` – Returner
-
-### Brandfolk
-- `GET /staff` – Liste over brandfolk
-- `GET /staff/{id}` – Vis brandmand
-- `POST /staff` – Opret brandmand
-- `POST /staff/{id}/stations/add` – Tilføj station
-
-### Rapporter
-- `GET /reports` – Dashboard
-- `GET /reports/phone-numbers` – Telefonnumre
-- `GET /reports/export-phones` – CSV eksport
 
 ## Licens
 
