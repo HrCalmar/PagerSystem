@@ -1,11 +1,10 @@
 <?php
-// src/Controllers/SettingsController.php
 namespace App\Controllers;
 
 use App\Services\{SettingsService, WorkflowTransitionService, DefectService, PreparationService};
-use App\Core\CSRF;
+use App\Core\BaseController;
 
-class SettingsController {
+class SettingsController extends BaseController {
     private SettingsService $settings;
 
     public function __construct() {
@@ -21,7 +20,7 @@ class SettingsController {
     }
 
     public function update(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $all = $this->settings->getAll();
             foreach ($all as $s) {
@@ -40,7 +39,7 @@ class SettingsController {
     }
 
     public function updateTransition(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             (new WorkflowTransitionService())->update(
                 (int)$_POST['id'],
@@ -55,10 +54,10 @@ class SettingsController {
     }
 
     public function saveSym(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $defect = new DefectService();
-            $id = (int)($_POST['id'] ?? 0);
+            $id     = (int)($_POST['id'] ?? 0);
             if ($id) {
                 $defect->updateSymptom($id, trim($_POST['label']), (int)$_POST['sort_order'], isset($_POST['is_enabled']));
             } else {
@@ -72,17 +71,17 @@ class SettingsController {
     }
 
     public function deleteSym(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         (new DefectService())->deleteSymptom((int)$_POST['id']);
         header('Location: /settings?success=saved#symptoms');
         exit;
     }
 
     public function saveCheck(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $prep = new PreparationService();
-            $id = (int)($_POST['id'] ?? 0);
+            $id   = (int)($_POST['id'] ?? 0);
             if ($id) {
                 $prep->updateCheck($id, trim($_POST['label']), (int)$_POST['sort_order'], isset($_POST['is_enabled']));
             } else {
@@ -96,7 +95,7 @@ class SettingsController {
     }
 
     public function deleteCheck(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         (new PreparationService())->deleteCheck((int)$_POST['id']);
         header('Location: /settings?success=saved#checks');
         exit;

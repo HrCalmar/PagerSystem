@@ -1,11 +1,11 @@
 <?php
-// src/Controllers/StationController.php
 namespace App\Controllers;
 
 use App\Config\Database;
-use App\Core\{CSRF, Auth};
+use App\Core\{Auth, BaseController};
+use App\Services\AuditService;
 
-class StationController {
+class StationController extends BaseController {
     private $db;
 
     public function __construct() {
@@ -34,10 +34,7 @@ class StationController {
         $stmt->execute([$id]);
         $station = $stmt->fetch();
 
-        if (!$station) {
-            http_response_code(404);
-            die('Station ikke fundet');
-        }
+        if (!$station) $this->abort(404, 'Station ikke fundet');
 
         $stmt = $this->db->prepare(
             "SELECT s.*,
@@ -63,9 +60,7 @@ class StationController {
     }
 
     public function store(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) {
-            die('Invalid CSRF token');
-        }
+        $this->requireCsrf();
 
         try {
             $name = trim($_POST['name'] ?? '');
@@ -78,10 +73,10 @@ class StationController {
             );
             $stmt->execute([
                 $name,
-                $_POST['code'] ?: null,
+                $_POST['code']    ?: null,
                 $_POST['address'] ?: null,
-                $_POST['phone'] ?: null,
-                $_POST['email'] ?: null,
+                $_POST['phone']   ?: null,
+                $_POST['email']   ?: null,
             ]);
 
             header('Location: /stations?success=created');
@@ -96,18 +91,13 @@ class StationController {
         $stmt->execute([$id]);
         $station = $stmt->fetch();
 
-        if (!$station) {
-            http_response_code(404);
-            die('Station ikke fundet');
-        }
+        if (!$station) $this->abort(404, 'Station ikke fundet');
 
         require __DIR__ . '/../../views/stations/edit.php';
     }
 
     public function update(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) {
-            die('Invalid CSRF token');
-        }
+        $this->requireCsrf();
 
         try {
             $name = trim($_POST['name'] ?? '');
@@ -128,15 +118,14 @@ class StationController {
             );
             $stmt->execute([
                 $name,
-                $_POST['code'] ?: null,
+                $_POST['code']    ?: null,
                 $_POST['address'] ?: null,
-                $_POST['phone'] ?: null,
-                $_POST['email'] ?: null,
+                $_POST['phone']   ?: null,
+                $_POST['email']   ?: null,
                 $id,
             ]);
 
-            $audit = new \App\Services\AuditService();
-            $audit->log(Auth::user()['id'], 'update_station', 'station', (int)$id, [], ['name' => $name]);
+            (new AuditService())->log(Auth::user()['id'], 'update_station', 'station', (int)$id, [], ['name' => $name]);
 
             header('Location: /stations/' . $id . '?success=updated');
         } catch (\Exception $e) {
@@ -146,9 +135,7 @@ class StationController {
     }
 
     public function delete(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) {
-            die('Invalid CSRF token');
-        }
+        $this->requireCsrf();
 
         try {
             $stmt = $this->db->prepare(

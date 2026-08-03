@@ -1,27 +1,28 @@
 <?php
-// src/Controllers/StaffController.php
 namespace App\Controllers;
 
-use App\Services\{StaffService, StaffWorkflowService};
+use App\Services\{StaffService, StaffWorkflowService, PagerService};
 use App\Config\Database;
-use App\Core\{CSRF, Auth};
+use App\Core\{Auth, BaseController};
 use PDO;
 
-class StaffController {
+class StaffController extends BaseController {
     private StaffService $service;
     private StaffWorkflowService $workflow;
+    private PagerService $pagerService;
     private PDO $db;
 
     public function __construct() {
-        $this->service = new StaffService();
-        $this->workflow = new StaffWorkflowService();
-        $this->db = Database::getInstance();
+        $this->service      = new StaffService();
+        $this->workflow     = new StaffWorkflowService();
+        $this->pagerService = new PagerService();
+        $this->db           = Database::getInstance();
     }
 
     public function index(): void {
         $filters = [
-            'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? '',
+            'search'       => $_GET['search'] ?? '',
+            'status'       => $_GET['status'] ?? '',
             'show_deleted' => isset($_GET['deleted']) && $_GET['deleted'] === '1'
         ];
 
@@ -31,26 +32,16 @@ class StaffController {
 
     public function show(string $id): void {
         $staff = $this->service->getById((int)$id, true);
+        if (!$staff) $this->abort(404, 'Brandmand ikke fundet');
 
-        if (!$staff) {
-            http_response_code(404);
-            die('Brandmand ikke fundet');
-        }
-
-        $stations = $this->service->getStations((int)$id);
-        $competencies = $this->service->getCompetencies((int)$id);
-        $activePagers = $this->service->getActivePagers((int)$id);
-        $pagerHistory = $this->service->getPagers((int)$id);
-
-        $allStations = $this->db->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
+        $stations        = $this->service->getStations((int)$id);
+        $competencies    = $this->service->getCompetencies((int)$id);
+        $activePagers    = $this->service->getActivePagers((int)$id);
+        $pagerHistory    = $this->service->getPagers((int)$id);
+        $allStations     = $this->db->query("SELECT id, name FROM stations WHERE deleted_at IS NULL ORDER BY name")->fetchAll();
         $allCompetencies = $this->db->query("SELECT id, name FROM competencies ORDER BY name")->fetchAll();
-
-        $stmt = $this->db->query(
-            "SELECT id, serial_number, article_number FROM pagers WHERE status IN ('in_stock','reserved') AND archived_at IS NULL ORDER BY serial_number"
-        );
-        $availablePagers = $stmt->fetchAll();
-
-        $isDeleted = !empty($staff['deleted_at']);
+        $availablePagers = $this->pagerService->getAvailable();
+        $isDeleted       = !empty($staff['deleted_at']);
 
         require __DIR__ . '/../../views/staff/show.php';
     }
@@ -61,9 +52,7 @@ class StaffController {
     }
 
     public function store(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) {
-            die('Invalid CSRF token');
-        }
+        $this->requireCsrf();
 
         $this->db->beginTransaction();
         try {
@@ -106,19 +95,13 @@ class StaffController {
 
     public function edit(string $id): void {
         $staff = $this->service->getById((int)$id);
-
-        if (!$staff) {
-            http_response_code(404);
-            die('Brandmand ikke fundet');
-        }
+        if (!$staff) $this->abort(404, 'Brandmand ikke fundet');
 
         require __DIR__ . '/../../views/staff/edit.php';
     }
 
     public function update(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) {
-            die('Invalid CSRF token');
-        }
+        $this->requireCsrf();
 
         try {
             $data = [
@@ -136,7 +119,6 @@ class StaffController {
             if ($stmt->fetchColumn() > 0) throw new \Exception('Lønnummer eksisterer allerede på en anden brandmand');
 
             $this->service->update((int)$id, $data);
-
             header('Location: /staff/' . $id . '?success=updated');
         } catch (\Exception $e) {
             header('Location: /staff/' . $id . '/edit?error=' . urlencode($e->getMessage()));
@@ -145,8 +127,7 @@ class StaffController {
     }
 
     public function deactivate(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->deactivate((int)$id, Auth::user()['id']);
             header('Location: /staff/' . $id . '?success=deactivated');
@@ -157,8 +138,7 @@ class StaffController {
     }
 
     public function reactivate(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->reactivate((int)$id, Auth::user()['id']);
             header('Location: /staff/' . $id . '?success=reactivated');
@@ -169,8 +149,7 @@ class StaffController {
     }
 
     public function delete(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->delete((int)$id, Auth::user()['id']);
             header('Location: /staff?success=deleted');
@@ -181,8 +160,7 @@ class StaffController {
     }
 
     public function addStation(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->addStation(
                 (int)$id,
@@ -198,12 +176,11 @@ class StaffController {
     }
 
     public function removeStation(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->removeStation(
-                (int)$id,
                 (int)$_POST['assignment_id'],
+                date('Y-m-d'),
                 Auth::user()['id']
             );
             header('Location: /staff/' . $id . '?success=station_removed');
@@ -214,14 +191,13 @@ class StaffController {
     }
 
     public function addCompetency(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->addCompetency(
                 (int)$id,
                 (int)$_POST['competency_id'],
                 $_POST['obtained_date'] ?: null,
-                $_POST['expiry_date'] ?: null,
+                $_POST['expiry_date']   ?: null,
                 Auth::user()['id']
             );
             header('Location: /staff/' . $id . '?success=competency_added');
@@ -232,8 +208,7 @@ class StaffController {
     }
 
     public function removeCompetency(string $id): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
-
+        $this->requireCsrf();
         try {
             $this->workflow->removeCompetency(
                 (int)$_POST['staff_competency_id'],

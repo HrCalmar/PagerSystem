@@ -1,5 +1,4 @@
 <?php
-// src/Services/DefectService.php
 namespace App\Services;
 
 use App\Config\Database;
@@ -76,7 +75,6 @@ class DefectService {
         return array_column($stmt->fetchAll(), 'symptom_id');
     }
 
-    // Tværgående rapport
     public function getReportOverview(array $filters = []): array {
         $sql = "SELECT dr.id, dr.pager_id, dr.reported_at, dr.description,
                        p.serial_number, p.article_number,
@@ -134,7 +132,6 @@ class DefectService {
         return $stmt->fetchAll();
     }
 
-    // Settings: symptomer
     public function getAllSymptoms(): array {
         return $this->getSymptoms(false);
     }

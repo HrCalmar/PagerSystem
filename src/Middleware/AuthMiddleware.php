@@ -1,5 +1,4 @@
 <?php
-// src/Middleware/AuthMiddleware.php
 namespace App\Middleware;
 
 use App\Core\Auth;

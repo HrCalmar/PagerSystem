@@ -1,5 +1,4 @@
 <?php
-// src/Services/StaffService.php
 namespace App\Services;
 
 use App\Config\Database;
@@ -33,7 +32,7 @@ class StaffService {
 
         if (!empty($filters['search'])) {
             $sql .= " AND (s.name LIKE ? OR s.employee_number LIKE ? OR s.ric_code LIKE ? OR s.odin_id LIKE ?)";
-            $search = '%' . $filters['search'] . '%';
+            $search    = '%' . $filters['search'] . '%';
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -84,7 +83,7 @@ class StaffService {
             $data['name'],
             $data['employee_number'],
             $data['ric_code'] ?: null,
-            $data['odin_id'] ?: null,
+            $data['odin_id']  ?: null,
         ]);
 
         return (int)$this->db->lastInsertId();
@@ -98,7 +97,7 @@ class StaffService {
             $data['name'],
             $data['employee_number'],
             $data['ric_code'] ?: null,
-            $data['odin_id'] ?: null,
+            $data['odin_id']  ?: null,
             $id,
         ]);
     }

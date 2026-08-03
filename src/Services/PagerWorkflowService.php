@@ -1,9 +1,7 @@
 <?php
-// src/Services/PagerWorkflowService.php
 namespace App\Services;
 
 use App\Config\Database;
-use App\Services\{AuditService, SettingsService, WorkflowTransitionService, DefectService, PreparationService};
 use PDO;
 use Exception;
 
@@ -32,7 +30,10 @@ class PagerWorkflowService {
             $this->db->prepare("INSERT INTO pager_assignments (pager_id, staff_id, reserved_at) VALUES (?, ?, NOW())")->execute([$pagerId, $staffId]);
             $this->audit->log($userId, 'reserve_pager', 'pager', $pagerId, $pager, ['status' => 'reserved', 'staff_id' => $staffId]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function issue(int $pagerId, int $staffId, int $userId): void {
@@ -56,7 +57,10 @@ class PagerWorkflowService {
             }
             $this->audit->log($userId, 'issue_pager', 'pager', $pagerId, $pager, ['status' => 'issued', 'staff_id' => $staffId]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function returnPager(int $pagerId, int $userId, string $toStatus, ?string $reason = null): void {
@@ -79,13 +83,16 @@ class PagerWorkflowService {
             $this->db->prepare("UPDATE pager_assignments SET returned_at = NOW(), reason = ? WHERE id = ?")->execute([$reason, $assignment['id']]);
             $this->audit->log($userId, 'return_pager', 'pager', $pagerId, $pager, ['status' => $toStatus, 'reason' => $reason]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function markBroken(int $pagerId, int $userId, string $toStatus, array $symptomIds, ?string $description): void {
         $this->db->beginTransaction();
         try {
-            $pager = $this->getPager($pagerId);
+            $pager   = $this->getPager($pagerId);
             $allowed = array_column($this->transitions->getForEvent('broken', $pager['status']), 'to_status');
             if (!in_array($toStatus, $allowed)) throw new Exception("Ugyldig målstatus for defekt");
 
@@ -102,7 +109,10 @@ class PagerWorkflowService {
             $this->db->prepare("UPDATE pagers SET status = ? WHERE id = ?")->execute([$toStatus, $pagerId]);
             $this->audit->log($userId, 'broken_pager', 'pager', $pagerId, $pager, ['status' => $toStatus, 'symptoms' => $symptomIds]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function repaired(int $repairId, int $userId, string $toStatus = 'for_preparation'): void {
@@ -116,25 +126,26 @@ class PagerWorkflowService {
 
             $this->db->prepare("UPDATE repairs SET completed_at = NOW() WHERE id = ?")->execute([$repairId]);
 
-            $pager = $this->getPager($repair['pager_id']);
+            $pager      = $this->getPager($repair['pager_id']);
             $assignment = $this->getActiveAssignment($repair['pager_id']);
 
             if ($assignment) {
-                // Brandmand har stadig pageren — luk kun reparationen, rør ikke status
                 $this->audit->log($userId, 'complete_repair', 'repair', $repairId, $repair, ['note' => 'Afventer returnering fra brandmand']);
                 $this->db->commit();
                 return;
             }
 
-            // Ingen aktiv assignment — skift pager status
-            $usePrep = $this->settings->get('preparation_explicit', false);
+            $usePrep   = $this->settings->get('preparation_explicit', false);
             $newStatus = ($toStatus === 'for_preparation' && !$usePrep) ? 'in_stock' : $toStatus;
             if (!in_array($newStatus, ['for_preparation', 'in_stock'])) $newStatus = $usePrep ? 'for_preparation' : 'in_stock';
 
             $this->db->prepare("UPDATE pagers SET status = ? WHERE id = ?")->execute([$newStatus, $repair['pager_id']]);
             $this->audit->log($userId, 'repaired_pager', 'pager', $repair['pager_id'], $pager, ['status' => $newStatus]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function completePreparation(int $pagerId, int $userId, array $items, bool $allOk, ?string $note, bool $forced = false, ?string $forcedReason = null): void {
@@ -155,7 +166,10 @@ class PagerWorkflowService {
                 'status' => 'in_stock', 'forced' => $forced, 'forced_reason' => $forcedReason,
             ]);
             $this->db->commit();
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     private function getPager(int $id): array {

@@ -1,5 +1,4 @@
 <?php
-// src/Services/PreparationService.php
 namespace App\Services;
 
 use App\Config\Database;
@@ -35,7 +34,7 @@ class PreparationService {
 
     public function canForce(): bool {
         $settings = new SettingsService();
-        $minRole = $settings->get('preparation_force_min_role', 'admin');
+        $minRole  = $settings->get('preparation_force_min_role', 'admin');
         return Auth::hasRole($minRole);
     }
 
@@ -119,7 +118,6 @@ class PreparationService {
         return $results;
     }
 
-    // Settings
     public function getAllChecks(): array {
         return $this->getChecks(false);
     }

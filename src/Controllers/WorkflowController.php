@@ -1,30 +1,31 @@
 <?php
-// src/Controllers/WorkflowController.php
 namespace App\Controllers;
 
-use App\Services\{PagerWorkflowService, PagerService, WorkflowTransitionService, DefectService, PreparationService, SettingsService};
-use App\Core\{CSRF, Auth};
+use App\Services\{PagerWorkflowService, PagerService, RepairService, WorkflowTransitionService, DefectService, PreparationService};
+use App\Core\{Auth, BaseController};
 
-class WorkflowController {
+class WorkflowController extends BaseController {
     private PagerWorkflowService $workflow;
     private PagerService $pagerService;
+    private RepairService $repairService;
     private WorkflowTransitionService $transitions;
 
     public function __construct() {
-        $this->workflow    = new PagerWorkflowService();
-        $this->pagerService = new PagerService();
-        $this->transitions = new WorkflowTransitionService();
+        $this->workflow      = new PagerWorkflowService();
+        $this->pagerService  = new PagerService();
+        $this->repairService = new RepairService();
+        $this->transitions   = new WorkflowTransitionService();
     }
 
     public function showReserve(string $pagerId): void {
         $pager = $this->pagerService->getById((int)$pagerId);
-        if (!$pager || $pager['status'] !== 'in_stock') die('Ugyldig pager');
+        if (!$pager || $pager['status'] !== 'in_stock') $this->abort(400, 'Ugyldig pager');
         $staff = $this->pagerService->getActiveStaff();
         require __DIR__ . '/../../views/workflows/reserve.php';
     }
 
     public function reserve(string $pagerId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $this->workflow->reserve((int)$pagerId, (int)$_POST['staff_id'], Auth::user()['id']);
             header('Location: /pagers/' . $pagerId . '?success=reserved');
@@ -36,14 +37,14 @@ class WorkflowController {
 
     public function showIssue(string $pagerId): void {
         $pager = $this->pagerService->getById((int)$pagerId);
-        if (!$pager || !in_array($pager['status'], ['in_stock', 'reserved'])) die('Ugyldig pager');
-        $staff = $this->pagerService->getActiveStaff();
+        if (!$pager || !in_array($pager['status'], ['in_stock', 'reserved'])) $this->abort(400, 'Ugyldig pager');
+        $staff       = $this->pagerService->getActiveStaff();
         $preselected = $pager['staff_id'] ?? null;
         require __DIR__ . '/../../views/workflows/issue.php';
     }
 
     public function issue(string $pagerId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $this->workflow->issue((int)$pagerId, (int)$_POST['staff_id'], Auth::user()['id']);
             header('Location: /pagers/' . $pagerId . '?success=issued');
@@ -55,13 +56,13 @@ class WorkflowController {
 
     public function showReturn(string $pagerId): void {
         $pager = $this->pagerService->getById((int)$pagerId);
-        if (!$pager || $pager['status'] !== 'issued') die('Ugyldig pager');
+        if (!$pager || $pager['status'] !== 'issued') $this->abort(400, 'Ugyldig pager');
         $transitions = $this->transitions->getForEvent('return', 'issued');
         require __DIR__ . '/../../views/workflows/return.php';
     }
 
     public function return(string $pagerId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $this->workflow->returnPager(
                 (int)$pagerId,
@@ -78,15 +79,15 @@ class WorkflowController {
 
     public function showBroken(string $pagerId): void {
         $pager = $this->pagerService->getById((int)$pagerId);
-        if (!$pager) die('Ugyldig pager');
+        if (!$pager) $this->abort(404, 'Pager ikke fundet');
         $transitions = $this->transitions->getForEvent('broken', $pager['status']);
-        if (empty($transitions)) die('Ingen tilgængelige transitions for denne status');
+        if (empty($transitions)) $this->abort(400, 'Ingen tilgængelige transitions for denne status');
         $symptoms = (new DefectService())->getSymptoms();
         require __DIR__ . '/../../views/workflows/broken.php';
     }
 
     public function markBroken(string $pagerId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $symptomIds = array_map('intval', $_POST['symptom_ids'] ?? []);
             $this->workflow->markBroken(
@@ -104,30 +105,21 @@ class WorkflowController {
     }
 
     public function showRepaired(string $repairId): void {
-        $db = \App\Config\Database::getInstance();
-        $stmt = $db->prepare("SELECT r.*, p.serial_number, p.status as pager_status FROM repairs r INNER JOIN pagers p ON p.id = r.pager_id WHERE r.id = ?");
-        $stmt->execute([$repairId]);
-        $repair = $stmt->fetch();
-        if (!$repair) die('Reparation ikke fundet');
-        $transitions = $this->transitions->getForEvent('repaired', 'in_repair');
-        $stmt2 = $db->prepare("SELECT 1 FROM pager_assignments WHERE pager_id = ? AND returned_at IS NULL LIMIT 1");
-        $stmt2->execute([$repair['pager_id']]);
-        $hasAssignment = (bool)$stmt2->fetchColumn();
+        $repair = $this->repairService->getWithPager((int)$repairId);
+        if (!$repair) $this->abort(404, 'Reparation ikke fundet');
+        $transitions   = $this->transitions->getForEvent('repaired', 'in_repair');
+        $hasAssignment = $this->pagerService->hasActiveAssignment((int)$repair['pager_id']);
         require __DIR__ . '/../../views/workflows/repaired.php';
     }
 
     public function repaired(string $repairId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
-            $db = \App\Config\Database::getInstance();
             if (!empty($_POST['cost'])) {
-                $stmt = $db->prepare("UPDATE repairs SET cost = ? WHERE id = ?");
-                $stmt->execute([(float)$_POST['cost'], (int)$repairId]);
+                $this->repairService->updateCost((int)$repairId, (float)$_POST['cost']);
             }
             $this->workflow->repaired((int)$repairId, Auth::user()['id'], $_POST['to_status'] ?? 'for_preparation');
-            $stmt = $db->prepare("SELECT pager_id FROM repairs WHERE id = ?");
-            $stmt->execute([$repairId]);
-            $pagerId = $stmt->fetchColumn();
+            $pagerId = $this->repairService->getPagerId((int)$repairId);
             header('Location: /pagers/' . $pagerId . '?success=repaired');
         } catch (\Exception $e) {
             header('Location: /repairs/' . $repairId . '/complete?error=' . urlencode($e->getMessage()));
@@ -137,7 +129,7 @@ class WorkflowController {
 
     public function showPreparation(string $pagerId): void {
         $pager = $this->pagerService->getById((int)$pagerId);
-        if (!$pager || $pager['status'] !== 'for_preparation') die('Ugyldig pager');
+        if (!$pager || $pager['status'] !== 'for_preparation') $this->abort(400, 'Ugyldig pager');
         $prep     = new PreparationService();
         $checks   = $prep->getChecks();
         $defect   = new DefectService();
@@ -147,7 +139,7 @@ class WorkflowController {
     }
 
     public function completePreparation(string $pagerId): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         try {
             $items = [];
             foreach ($_POST['checks'] ?? [] as $checkId => $val) {
@@ -156,8 +148,8 @@ class WorkflowController {
                     'note'   => $val['note'] ?? null,
                 ];
             }
-            $allOk   = isset($_POST['all_ok']);
-            $forced  = isset($_POST['forced']);
+            $allOk  = isset($_POST['all_ok']);
+            $forced = isset($_POST['forced']);
             if ($allOk) {
                 foreach ($items as $id => $_) {
                     $items[$id]['passed'] = true;
@@ -180,7 +172,7 @@ class WorkflowController {
     }
 
     public function quickAssign(): void {
-        if (!CSRF::verify($_POST['csrf_token'] ?? '')) die('Invalid CSRF token');
+        $this->requireCsrf();
         $staffId = (int)$_POST['staff_id'];
         try {
             $this->workflow->issue((int)$_POST['pager_id'], $staffId, Auth::user()['id']);

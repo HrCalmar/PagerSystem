@@ -1,5 +1,4 @@
 <?php
-// src/Services/SettingsService.php
 namespace App\Services;
 
 use App\Config\Database;
