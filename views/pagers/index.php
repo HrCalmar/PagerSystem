@@ -154,8 +154,26 @@ ob_start();
                 </tbody>
             </table>
         </div>
+        <?php
+        $queryParams = array_filter(['search' => $filters['search'], 'status' => $filters['status']]);
+        echo paginate_links($page, $total, $perPage, $queryParams);
+        ?>
     <?php endif; ?>
 </div>
+
+<style>
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0 4px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.pagination-links { display: flex; gap: 4px; flex-wrap: wrap; }
+.pagination-info { color: var(--gray-500); font-size: 0.875rem; }
+.pagination-ellipsis { padding: 0 4px; color: var(--gray-400); line-height: 2; }
+</style>
 
 <?php
 $content = ob_get_clean();

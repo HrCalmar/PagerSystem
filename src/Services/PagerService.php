@@ -14,10 +14,28 @@ class PagerService {
         $this->audit = new AuditService();
     }
 
-    public function getAll(array $filters = []): array {
+    public function getAll(array $filters = [], int $page = 1, int $perPage = 50): array {
+        [$sql, $params] = $this->buildQuery($filters);
+        $sql .= " ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = ($page - 1) * $perPage;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function countAll(array $filters = []): int {
+        [$sql, $params] = $this->buildQuery($filters);
+        $count = $this->db->prepare("SELECT COUNT(*) FROM ($sql) AS t");
+        $count->execute($params);
+        return (int)$count->fetchColumn();
+    }
+
+    private function buildQuery(array $filters): array {
         $sql = "SELECT p.*,
                        s.sim_number, s.phone_number, s.status as sim_status,
-                       pa.staff_id, st.name as staff_name,
+                       pa.staff_id, st.name as staff_name, pa.issued_at, pa.reserved_at,
                        CASE WHEN pa.returned_at IS NULL AND pa.issued_at IS NOT NULL THEN 1 ELSE 0 END as is_issued
                 FROM pagers p
                 LEFT JOIN sim_cards s ON s.pager_id = p.id AND s.status = 'active'
@@ -35,7 +53,7 @@ class PagerService {
 
         if (!empty($filters['search'])) {
             $sql .= " AND (p.serial_number LIKE ? OR p.article_number LIKE ? OR s.phone_number LIKE ?)";
-            $search = '%' . $filters['search'] . '%';
+            $search   = '%' . $filters['search'] . '%';
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -54,11 +72,7 @@ class PagerService {
             $params[] = Auth::getStationId();
         }
 
-        $sql .= " ORDER BY p.created_at DESC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        return [$sql, $params];
     }
 
     public function getById(int $id): ?array {
@@ -105,7 +119,7 @@ class PagerService {
         $stmt->execute([
             $data['serial_number'],
             $data['article_number'] ?: null,
-            $data['purchase_date'] ?: null
+            $data['purchase_date']  ?: null
         ]);
 
         return (int)$this->db->lastInsertId();
@@ -117,14 +131,12 @@ class PagerService {
         }
 
         $stmt = $this->db->prepare(
-            "UPDATE pagers
-             SET serial_number = ?, article_number = ?, purchase_date = ?
-             WHERE id = ?"
+            "UPDATE pagers SET serial_number = ?, article_number = ?, purchase_date = ? WHERE id = ?"
         );
         return $stmt->execute([
             $data['serial_number'],
             $data['article_number'] ?: null,
-            $data['purchase_date'] ?: null,
+            $data['purchase_date']  ?: null,
             $id
         ]);
     }
@@ -163,23 +175,13 @@ class PagerService {
     }
 
     public function getHistory(int $pagerId): array {
-        $sql = "SELECT pa.*,
-                       st.name as staff_name, st.employee_number,
-                       u1.name as reserved_by_name,
-                       u2.name as issued_by_name,
-                       u3.name as returned_by_name
-                FROM pager_assignments pa
-                LEFT JOIN staff st ON st.id = pa.staff_id
-                LEFT JOIN audit_log al1 ON al1.entity_type = 'pager_assignment' AND al1.entity_id = pa.id AND al1.action_type = 'reserve'
-                LEFT JOIN users u1 ON u1.id = al1.user_id
-                LEFT JOIN audit_log al2 ON al2.entity_type = 'pager_assignment' AND al2.entity_id = pa.id AND al2.action_type = 'issue'
-                LEFT JOIN users u2 ON u2.id = al2.user_id
-                LEFT JOIN audit_log al3 ON al3.entity_type = 'pager_assignment' AND al3.entity_id = pa.id AND al3.action_type = 'return'
-                LEFT JOIN users u3 ON u3.id = al3.user_id
-                WHERE pa.pager_id = ?
-                ORDER BY pa.created_at DESC";
-
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare(
+            "SELECT pa.*, st.name as staff_name, st.employee_number
+             FROM pager_assignments pa
+             LEFT JOIN staff st ON st.id = pa.staff_id
+             WHERE pa.pager_id = ?
+             ORDER BY pa.created_at DESC"
+        );
         $stmt->execute([$pagerId]);
         return $stmt->fetchAll();
     }
@@ -196,14 +198,12 @@ class PagerService {
         $sql = "SELECT id, name, employee_number FROM staff WHERE status = 'active' AND deleted_at IS NULL ORDER BY name";
 
         if (Auth::isStationUser()) {
-            $sql = "SELECT s.id, s.name, s.employee_number
-                    FROM staff s
-                    INNER JOIN station_assignments sa ON sa.staff_id = s.id
-                    WHERE s.status = 'active'
-                    AND s.deleted_at IS NULL
-                    AND sa.station_id = ?
-                    AND sa.end_date IS NULL
-                    ORDER BY s.name";
+            $sql  = "SELECT s.id, s.name, s.employee_number
+                     FROM staff s
+                     INNER JOIN station_assignments sa ON sa.staff_id = s.id
+                     WHERE s.status = 'active' AND s.deleted_at IS NULL
+                     AND sa.station_id = ? AND sa.end_date IS NULL
+                     ORDER BY s.name";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([Auth::getStationId()]);
         } else {
@@ -229,10 +229,7 @@ class PagerService {
         $stmt = $this->db->prepare(
             "SELECT 1 FROM pager_assignments pa
              INNER JOIN station_assignments sa ON sa.staff_id = pa.staff_id
-             WHERE pa.pager_id = ?
-             AND sa.station_id = ?
-             AND sa.end_date IS NULL
-             AND pa.returned_at IS NULL"
+             WHERE pa.pager_id = ? AND sa.station_id = ? AND sa.end_date IS NULL AND pa.returned_at IS NULL"
         );
         $stmt->execute([$pagerId, Auth::getStationId()]);
         return (bool)$stmt->fetch();

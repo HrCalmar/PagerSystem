@@ -20,7 +20,11 @@ class AuditController extends BaseController {
             'date_to'     => $_GET['date_to']     ?? ''
         ];
 
-        $logs        = $this->service->getFiltered($filters);
+        $perPage = 100;
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+        $total   = $this->service->countFiltered($filters);
+        $logs    = $this->service->getFiltered($filters, $page, $perPage);
+
         $users       = $this->service->getUsers();
         $actionTypes = $this->service->getActionTypes();
         $entityTypes = $this->service->getEntityTypes();

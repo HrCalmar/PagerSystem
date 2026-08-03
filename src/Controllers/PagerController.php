@@ -18,7 +18,11 @@ class PagerController extends BaseController {
             'show_archived' => isset($_GET['archived']) && $_GET['archived'] === '1'
         ];
 
-        $pagers = $this->service->getAll($filters);
+        $perPage = 50;
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+        $total   = $this->service->countAll($filters);
+        $pagers  = $this->service->getAll($filters, $page, $perPage);
+
         require __DIR__ . '/../../views/pagers/index.php';
     }
 
@@ -44,7 +48,7 @@ class PagerController extends BaseController {
             $data = [
                 'serial_number'  => trim($_POST['serial_number']),
                 'article_number' => trim($_POST['article_number'] ?? ''),
-                'purchase_date'  => trim($_POST['purchase_date'] ?? '')
+                'purchase_date'  => trim($_POST['purchase_date']  ?? '')
             ];
 
             if (empty($data['serial_number'])) {
@@ -73,7 +77,7 @@ class PagerController extends BaseController {
             $data = [
                 'serial_number'  => trim($_POST['serial_number']),
                 'article_number' => trim($_POST['article_number'] ?? ''),
-                'purchase_date'  => trim($_POST['purchase_date'] ?? '')
+                'purchase_date'  => trim($_POST['purchase_date']  ?? '')
             ];
 
             if (empty($data['serial_number'])) {

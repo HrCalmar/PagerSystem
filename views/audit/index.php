@@ -4,34 +4,40 @@ $title = 'Aktivitetslog';
 ob_start();
 
 $actionLabels = [
-    'reserve_pager' => ['label' => 'Reserveret pager', 'icon' => 'fa-bookmark', 'color' => 'warning'],
-    'issue_pager' => ['label' => 'Udleveret pager', 'icon' => 'fa-hand-holding', 'color' => 'success'],
-    'return_pager' => ['label' => 'Returneret pager', 'icon' => 'fa-undo', 'color' => 'info'],
-    'stock_pager' => ['label' => 'Sat på lager', 'icon' => 'fa-box', 'color' => 'success'],
-    'repair_pager' => ['label' => 'Sendt til reparation', 'icon' => 'fa-wrench', 'color' => 'warning'],
-    'defect_pager' => ['label' => 'Markeret defekt', 'icon' => 'fa-times-circle', 'color' => 'danger'],
-    'preparation_pager' => ['label' => 'Sat til klargøring', 'icon' => 'fa-tools', 'color' => 'info'],
-    'archive_pager' => ['label' => 'Arkiveret pager', 'icon' => 'fa-archive', 'color' => 'secondary'],
-    'restore_pager' => ['label' => 'Gendannet pager', 'icon' => 'fa-undo', 'color' => 'success'],
-    'add_sim' => ['label' => 'Tilføjet SIM', 'icon' => 'fa-sim-card', 'color' => 'success'],
-    'deactivate_sim' => ['label' => 'Deaktiveret SIM', 'icon' => 'fa-sim-card', 'color' => 'danger'],
-    'deactivate_staff' => ['label' => 'Deaktiveret brandmand', 'icon' => 'fa-user-times', 'color' => 'warning'],
-    'reactivate_staff' => ['label' => 'Reaktiveret brandmand', 'icon' => 'fa-user-check', 'color' => 'success'],
-    'delete_staff' => ['label' => 'Slettet brandmand', 'icon' => 'fa-trash', 'color' => 'danger'],
-    'add_station' => ['label' => 'Tilføjet station', 'icon' => 'fa-building', 'color' => 'success'],
-    'remove_station' => ['label' => 'Fjernet station', 'icon' => 'fa-building', 'color' => 'warning'],
-    'add_competency' => ['label' => 'Tilføjet kompetence', 'icon' => 'fa-certificate', 'color' => 'success'],
-    'remove_competency' => ['label' => 'Fjernet kompetence', 'icon' => 'fa-certificate', 'color' => 'warning'],
-    'complete_repair' => ['label' => 'Afsluttet reparation', 'icon' => 'fa-check', 'color' => 'success'],
+    'reserve_pager'    => ['label' => 'Reserveret pager',      'icon' => 'fa-bookmark',      'color' => 'warning'],
+    'issue_pager'      => ['label' => 'Udleveret pager',       'icon' => 'fa-hand-holding',  'color' => 'success'],
+    'return_pager'     => ['label' => 'Returneret pager',      'icon' => 'fa-undo',          'color' => 'info'],
+    'stock_pager'      => ['label' => 'Sat på lager',          'icon' => 'fa-box',           'color' => 'success'],
+    'repair_pager'     => ['label' => 'Sendt til reparation',  'icon' => 'fa-wrench',        'color' => 'warning'],
+    'defect_pager'     => ['label' => 'Markeret defekt',       'icon' => 'fa-times-circle',  'color' => 'danger'],
+    'preparation_pager'=> ['label' => 'Sat til klargøring',    'icon' => 'fa-tools',         'color' => 'info'],
+    'archive_pager'    => ['label' => 'Arkiveret pager',       'icon' => 'fa-archive',       'color' => 'secondary'],
+    'restore_pager'    => ['label' => 'Gendannet pager',       'icon' => 'fa-undo',          'color' => 'success'],
+    'create_repair'    => ['label' => 'Oprettet reparation',   'icon' => 'fa-wrench',        'color' => 'warning'],
+    'add_sim'          => ['label' => 'Tilføjet SIM',          'icon' => 'fa-sim-card',      'color' => 'success'],
+    'deactivate_sim'   => ['label' => 'Deaktiveret SIM',       'icon' => 'fa-sim-card',      'color' => 'danger'],
+    'deactivate_staff' => ['label' => 'Deaktiveret brandmand', 'icon' => 'fa-user-times',    'color' => 'warning'],
+    'reactivate_staff' => ['label' => 'Reaktiveret brandmand', 'icon' => 'fa-user-check',    'color' => 'success'],
+    'delete_staff'     => ['label' => 'Slettet brandmand',     'icon' => 'fa-trash',         'color' => 'danger'],
+    'create_staff'     => ['label' => 'Oprettet brandmand',    'icon' => 'fa-user-plus',     'color' => 'success'],
+    'add_station'      => ['label' => 'Tilføjet station',      'icon' => 'fa-building',      'color' => 'success'],
+    'remove_station'   => ['label' => 'Fjernet station',       'icon' => 'fa-building',      'color' => 'warning'],
+    'create_station'   => ['label' => 'Oprettet station',      'icon' => 'fa-building',      'color' => 'success'],
+    'update_station'   => ['label' => 'Opdateret station',     'icon' => 'fa-building',      'color' => 'info'],
+    'delete_station'   => ['label' => 'Slettet station',       'icon' => 'fa-building',      'color' => 'danger'],
+    'add_competency'   => ['label' => 'Tilføjet kompetence',   'icon' => 'fa-certificate',   'color' => 'success'],
+    'remove_competency'=> ['label' => 'Fjernet kompetence',    'icon' => 'fa-certificate',   'color' => 'warning'],
+    'complete_repair'  => ['label' => 'Afsluttet reparation',  'icon' => 'fa-check',         'color' => 'success'],
 ];
 
 $entityLabels = [
-    'pager' => ['label' => 'Pager', 'icon' => 'fa-pager', 'route' => '/pagers/'],
-    'staff' => ['label' => 'Brandmand', 'icon' => 'fa-user', 'route' => '/staff/'],
-    'sim_card' => ['label' => 'SIM-kort', 'icon' => 'fa-sim-card', 'route' => null],
-    'station_assignment' => ['label' => 'Stationstilknytning', 'icon' => 'fa-building', 'route' => null],
-    'staff_competency' => ['label' => 'Kompetence', 'icon' => 'fa-certificate', 'route' => null],
-    'repair' => ['label' => 'Reparation', 'icon' => 'fa-wrench', 'route' => null],
+    'pager'              => ['label' => 'Pager',               'icon' => 'fa-pager',       'route' => '/pagers/'],
+    'staff'              => ['label' => 'Brandmand',           'icon' => 'fa-user',        'route' => '/staff/'],
+    'sim_card'           => ['label' => 'SIM-kort',            'icon' => 'fa-sim-card',    'route' => null],
+    'station_assignment' => ['label' => 'Stationstilknytning', 'icon' => 'fa-building',    'route' => null],
+    'staff_competency'   => ['label' => 'Kompetence',          'icon' => 'fa-certificate', 'route' => null],
+    'repair'             => ['label' => 'Reparation',          'icon' => 'fa-wrench',      'route' => null],
+    'station'            => ['label' => 'Station',             'icon' => 'fa-building',    'route' => '/stations/'],
 ];
 ?>
 
@@ -49,7 +55,7 @@ $entityLabels = [
                 </option>
             <?php endforeach; ?>
         </select>
-        
+
         <select name="action_type" class="filter-select">
             <option value="">Alle handlinger</option>
             <?php foreach ($actionTypes as $type): ?>
@@ -58,7 +64,7 @@ $entityLabels = [
                 </option>
             <?php endforeach; ?>
         </select>
-        
+
         <select name="entity_type" class="filter-select">
             <option value="">Alle typer</option>
             <?php foreach ($entityTypes as $type): ?>
@@ -67,10 +73,10 @@ $entityLabels = [
                 </option>
             <?php endforeach; ?>
         </select>
-        
-        <input type="date" name="date_from" value="<?= $filters['date_from'] ?>" placeholder="Fra dato">
-        <input type="date" name="date_to" value="<?= $filters['date_to'] ?>" placeholder="Til dato">
-        
+
+        <input type="date" name="date_from" value="<?= $filters['date_from'] ?>">
+        <input type="date" name="date_to"   value="<?= $filters['date_to'] ?>">
+
         <button type="submit" class="btn"><i class="fas fa-filter"></i> Filtrer</button>
         <?php if (array_filter($filters)): ?>
             <a href="/audit" class="btn"><i class="fas fa-times"></i> Nulstil</a>
@@ -105,14 +111,10 @@ $entityLabels = [
                     $entity = $entityLabels[$log['entity_type']] ?? ['label' => $log['entity_type'], 'icon' => 'fa-cube', 'route' => null];
                     ?>
                     <tr>
-                        <td class="text-sm">
-                            <?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?>
-                        </td>
+                        <td class="text-sm"><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
                         <td>
                             <?php if ($log['user_name']): ?>
-                                <span class="text-link">
-                                    <i class="fas fa-user"></i> <?= htmlspecialchars($log['user_name']) ?>
-                                </span>
+                                <span class="text-link"><i class="fas fa-user"></i> <?= htmlspecialchars($log['user_name']) ?></span>
                             <?php else: ?>
                                 <span class="text-muted">System</span>
                             <?php endif; ?>
@@ -122,16 +124,10 @@ $entityLabels = [
                                 <i class="fas <?= $action['icon'] ?>"></i> <?= $action['label'] ?>
                             </span>
                         </td>
-                        <td>
-                            <span class="text-sm">
-                                <i class="fas <?= $entity['icon'] ?>"></i> <?= $entity['label'] ?>
-                            </span>
-                        </td>
+                        <td><span class="text-sm"><i class="fas <?= $entity['icon'] ?>"></i> <?= $entity['label'] ?></span></td>
                         <td>
                             <?php if ($entity['route']): ?>
-                                <a href="<?= $entity['route'] . $log['entity_id'] ?>" class="text-link">
-                                    #<?= $log['entity_id'] ?>
-                                </a>
+                                <a href="<?= $entity['route'] . $log['entity_id'] ?>" class="text-link">#<?= $log['entity_id'] ?></a>
                             <?php else: ?>
                                 <span class="text-muted">#<?= $log['entity_id'] ?></span>
                             <?php endif; ?>
@@ -149,13 +145,16 @@ $entityLabels = [
                 </tbody>
             </table>
         </div>
-        
-        <?php if (count($logs) >= 500): ?>
-            <div class="alert alert-info" style="margin-top: 16px;">
-                <i class="fas fa-info-circle"></i>
-                Viser de seneste 500 poster. Brug filtre for at indsnævre resultatet.
-            </div>
-        <?php endif; ?>
+        <?php
+        $queryParams = array_filter([
+            'user_id'     => $filters['user_id'],
+            'action_type' => $filters['action_type'],
+            'entity_type' => $filters['entity_type'],
+            'date_from'   => $filters['date_from'],
+            'date_to'     => $filters['date_to'],
+        ]);
+        echo paginate_links($page, $total, $perPage, $queryParams);
+        ?>
     <?php endif; ?>
 </div>
 
@@ -166,15 +165,19 @@ $entityLabels = [
     align-items: center;
     flex-wrap: wrap;
 }
-
-.filter-form input[type="date"] {
-    width: 150px;
+.filter-form input[type="date"] { width: 150px; }
+.badge-secondary { background: var(--gray-200); color: var(--gray-700); }
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0 4px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
-
-.badge-secondary {
-    background: var(--gray-200);
-    color: var(--gray-700);
-}
+.pagination-links { display: flex; gap: 4px; flex-wrap: wrap; }
+.pagination-info { color: var(--gray-500); font-size: 0.875rem; }
+.pagination-ellipsis { padding: 0 4px; color: var(--gray-400); line-height: 2; }
 </style>
 
 <?php

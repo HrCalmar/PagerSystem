@@ -28,7 +28,25 @@ class AuditService {
         ]);
     }
 
-    public function getFiltered(array $filters): array {
+    public function getFiltered(array $filters, int $page = 1, int $perPage = 100): array {
+        [$sql, $params] = $this->buildFilterQuery($filters);
+        $sql .= " ORDER BY a.created_at DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = ($page - 1) * $perPage;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function countFiltered(array $filters): int {
+        [$sql, $params] = $this->buildFilterQuery($filters);
+        $count = $this->db->prepare("SELECT COUNT(*) FROM ($sql) AS t");
+        $count->execute($params);
+        return (int)$count->fetchColumn();
+    }
+
+    private function buildFilterQuery(array $filters): array {
         $sql    = "SELECT a.*, u.name as user_name, u.username
                    FROM audit_log a
                    LEFT JOIN users u ON u.id = a.user_id
@@ -56,11 +74,7 @@ class AuditService {
             $params[] = $filters['date_to'];
         }
 
-        $sql .= " ORDER BY a.created_at DESC LIMIT 500";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        return [$sql, $params];
     }
 
     public function getEntryById(int $id): ?array {

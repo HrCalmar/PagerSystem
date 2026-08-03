@@ -219,6 +219,7 @@ ob_start();
                         <th>Leverandør</th>
                         <th>Beskrivelse</th>
                         <th>Omkostning</th>
+                        <th>Kvittering</th>
                         <th>Status</th>
                         <th class="text-right">Handling</th>
                     </tr>
@@ -232,6 +233,15 @@ ob_start();
                         <td>
                             <?php if ($r['cost']): ?>
                                 <?= number_format($r['cost'], 2, ',', '.') ?> kr.
+                            <?php else: ?>
+                                <span class="text-muted">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($r['receipt_path']): ?>
+                                <a href="/uploads/receipts/<?= htmlspecialchars($r['receipt_path']) ?>" target="_blank" class="btn btn-small">
+                                    <i class="fas fa-paperclip"></i> Åbn
+                                </a>
                             <?php else: ?>
                                 <span class="text-muted">-</span>
                             <?php endif; ?>
